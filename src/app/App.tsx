@@ -19,7 +19,7 @@ const INITIAL_COURSES: Course[] = [
   { id:"c4",  name:"統計学",                        building:"学部棟",  floor:2, roomNumber:"201",  professor:"鈴木 教授",   period:3, day:1, color:"#FDE68A" },
   { id:"c5",  name:"組織行動論",                    building:"学部棟",  floor:3, roomNumber:"304",  professor:"高橋 教授",   period:2, day:2, color:"#C4B5FD" },
   { id:"c6",  name:"会計学基礎",                    building:"図書館",  floor:1, roomNumber:"L101", professor:"伊藤 教授",   period:4, day:2, color:"#FCA5A5" },
-  { id:"c7",  name:"ビジネス英語",                  building:"学部棟",  floor:1, roomNumber:"106",  professor:"Smith 講師", period:1, day:3, color:"#6EE7B7" },
+  { id:"c7",  name:"ビジネス英語",                  building:"学部棟",  floor:1, roomNumber:"104",  professor:"Smith 講師", period:1, day:3, color:"#6EE7B7" },
   { id:"c8",  name:"国際経済論",                    building:"研究棟B", floor:2, roomNumber:"205",  professor:"中村 教授",   period:3, day:3, color:"#FCA5A5" },
   { id:"c9",  name:"データ分析",                    building:"研究棟A", floor:1, roomNumber:"103",  professor:"渡辺 准教授", period:2, day:4, color:"#93C5FD" },
   { id:"c10", name:"経営戦略論",                    building:"学部棟",  floor:3, roomNumber:"301",  professor:"小林 教授",   period:4, day:4, color:"#FDE68A" },
