@@ -1,0 +1,9 @@
+{
+  "name": "md-to-pdf",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "marked": "^12.0.0"
+  }
+}
