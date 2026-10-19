@@ -5,7 +5,8 @@ import type { Course, NewCourse } from "../types";
 import { searchPlaces, type Place } from "../data/places";
 import { DAYS, PERIODS, formatLocation, formatRoom, formatSlot } from "../lib/schedule";
 import { matchesQuery, tokenize } from "../lib/search";
-import { CourseFormModal } from "./CourseFormModal";
+import { CourseEditModal } from "./CourseEditModal";
+import { CourseSearchModal } from "./CourseSearchModal";
 
 type Props = {
   courses: Course[];
@@ -16,8 +17,8 @@ type Props = {
   onDeleteCourse: (id: string) => void;
 };
 
-// 講義の追加・編集モーダルの状態。editing は編集中の講義
-type FormState = { mode: "add" } | { mode: "edit"; editing: Course } | null;
+// 開いているモーダル。add は授業登録検索(空きコマから開いたときはその曜日・時限)、edit は登録済み講義の編集
+type FormState = { mode: "add"; day?: number; period?: number } | { mode: "edit"; editing: Course } | null;
 
 export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse, onUpdateCourse, onDeleteCourse }: Props) {
   const [search, setSearch] = useState("");
@@ -66,7 +67,7 @@ export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse,
               onClick={() => setForm({ mode: "add" })}
               className="w-9 h-9 rounded-full flex items-center justify-center"
               style={{ backgroundColor: "#1A73E8" }}
-              aria-label="講義を追加"
+              aria-label="授業を検索して登録"
             >
               <Plus size={18} color="white" />
             </button>
@@ -208,10 +209,15 @@ export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse,
                         </AnimatePresence>
                       </div>
                     ) : (
-                      <div
-                        className="w-full h-full rounded-xl bg-white border border-gray-100"
+                      // 空きコマをタップすると、その曜日・時限で絞り込んだ授業登録検索を開く
+                      <button
+                        onClick={() => setForm({ mode: "add", day: di, period: p.period })}
+                        className="w-full h-full rounded-xl bg-white border border-gray-100 flex items-center justify-center"
                         style={{ minHeight: 72 }}
-                      />
+                        aria-label={`${formatSlot(di, p.period)}に授業を登録`}
+                      >
+                        <Plus size={14} color="#DADCE0" />
+                      </button>
                     )}
                   </div>
                 );
@@ -222,15 +228,22 @@ export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse,
       )}
 
       <AnimatePresence>
-        {form && (
-          <CourseFormModal
+        {form?.mode === "add" && (
+          <CourseSearchModal
+            key="add"
             existingCourses={courses}
-            editing={form.mode === "edit" ? form.editing : undefined}
-            onSubmit={data => {
-              if (form.mode === "edit") onUpdateCourse(form.editing.id, data);
-              else onAddCourse(data);
-              setForm(null);
-            }}
+            initialDay={form.day}
+            initialPeriod={form.period}
+            onRegister={data => { onAddCourse(data); setForm(null); }}
+            onClose={() => setForm(null)}
+          />
+        )}
+        {form?.mode === "edit" && (
+          <CourseEditModal
+            key="edit"
+            existingCourses={courses}
+            editing={form.editing}
+            onSubmit={data => { onUpdateCourse(form.editing.id, data); setForm(null); }}
             onClose={() => setForm(null)}
           />
         )}

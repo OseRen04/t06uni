@@ -21,8 +21,8 @@ MVP 最終決定の項目と、それを実装している場所。
 
 | MVP 項目 | 内容 | 実装 |
 | --- | --- | --- |
-| 時間割の作成と編集 | 講義の追加、編集モードでの内容の変更(講義をタップ)と削除(×)。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/app/components/Timetable.tsx)、[CourseFormModal.tsx](src/app/components/CourseFormModal.tsx) |
-| 授業登録検索(授業名、曜日、何コマ、教授の名前) | 講義の追加画面で授業一覧を検索し、「登録」ボタンでそのまま時間割に入れる。「月曜 2限」「田中」のように複数の条件を空白区切りで組み合わせられる。見つからない授業は手入力で追加できる | [CourseFormModal.tsx](src/app/components/CourseFormModal.tsx)、[catalog.ts](src/app/data/catalog.ts) |
+| 時間割の作成と編集 | 講義は授業登録検索から登録する(右上の「+」か、時間割の空きコマをタップ)。編集モードで講義をタップすると内容を変更、×で削除できる。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/app/components/Timetable.tsx)、[CourseEditModal.tsx](src/app/components/CourseEditModal.tsx) |
+| 授業登録検索(授業名、曜日、何コマ、教授の名前) | 授業名・曜日・何コマ・教員名の4つの条件で授業一覧を絞り込み、結果の「登録」ボタンで時間割に入れる。条件は組み合わせられ、空きコマから開いたときはその曜日・時限が最初から選ばれている | [CourseSearchModal.tsx](src/app/components/CourseSearchModal.tsx)、[catalog.ts](src/app/data/catalog.ts) |
 | 時間割表に講義名, 講義室, 棟, 階層を表示 | 各セルに講義名・棟・階・教室番号を表示する | [Timetable.tsx](src/app/components/Timetable.tsx) |
 | キャンパス自由検索(教室名, 棟の名前) | 時間割画面の検索欄で、登録済みの講義に加えてキャンパス内の教室・棟も検索し、その場所のキャンパスマップを開く | [Timetable.tsx](src/app/components/Timetable.tsx)、[places.ts](src/app/data/places.ts) |
 | 曜日時間のフォーマット | 曜日・時限・時刻の表記を「木曜 1限 8:50–10:20」の形にそろえる。表記は1つのファイルの関数で作る | [schedule.ts](src/app/lib/schedule.ts) |
