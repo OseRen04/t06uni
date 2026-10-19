@@ -104,9 +104,10 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
 
   // 講義から開いたときは講義名、キャンパス自由検索から開いたときは教室名か棟名を見出しにする
   const title = course ? course.name : destination.roomNumber ? formatRoom(destination.roomNumber) : destination.building;
+  // 教室名が見出しになっているとき(キャンパス自由検索から開いたとき)は、ここでは階だけを出す
   const roomText = [
     destination.floor !== undefined ? `${destination.floor}F` : "",
-    destination.roomNumber ? formatRoom(destination.roomNumber) : "",
+    course && destination.roomNumber ? formatRoom(destination.roomNumber) : "",
   ].filter(Boolean).join("　");
 
   return (

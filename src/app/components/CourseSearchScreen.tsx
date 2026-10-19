@@ -5,7 +5,8 @@ import type { Course, NewCourse } from "../types";
 import { CATALOG } from "../data/catalog";
 import { generateMockCourses, type SearchCriteria } from "../data/mockCourses";
 import { DAYS, PERIODS, formatLocation, formatPeriod, formatPeriodTime, formatSlot } from "../lib/schedule";
-import { splitByTokens, tokenize } from "../lib/search";
+import { tokenize } from "../lib/search";
+import { Highlight } from "./Highlight";
 
 // 検索結果がこれより少ないときは、模擬の授業で補う
 const MIN_RESULTS = 3;
@@ -231,19 +232,6 @@ function searchCourses(c: SearchCriteria, occupant: (d: number, p: number) => Co
     else groups.push({ day: x.day, period: x.period, courses: [x], occupant: occupant(x.day, x.period) });
   }
   return groups;
-}
-
-/** 検索語に一致した部分を黄色で強調する */
-function Highlight({ text, tokens }: { text: string; tokens: string[] }) {
-  return (
-    <>
-      {splitByTokens(text, tokens).map((part, i) =>
-        part.hit
-          ? <mark key={i} style={{ backgroundColor: "#FEEFC3", color: "inherit", borderRadius: 2 }}>{part.text}</mark>
-          : <span key={i}>{part.text}</span>
-      )}
-    </>
-  );
 }
 
 function SearchInput({ icon, label, value, onChange, onEnter }: { icon: React.ReactNode; label: string; value: string; onChange: (v: string) => void; onEnter: () => void }) {

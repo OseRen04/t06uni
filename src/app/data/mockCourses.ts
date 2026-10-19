@@ -1,6 +1,6 @@
-// モック環境用のダミー授業データ。
+// モック環境用のダミーデータ。
 // ① 授業一覧を埋めるダミー(平日 5 日 × 5 コマの各枠に 3 件)
-// ② 検索条件から機械的に作る模擬の検索結果
+// ② 検索条件から機械的に作る模擬の検索結果(授業検索・キャンパス自由検索)
 // 実際のシラバスのデータが入ったら、このファイルごと使わなくなる想定
 import type { NewCourse } from "../types";
 import { CLASSROOM_BUILDINGS } from "./campus";
@@ -112,4 +112,19 @@ export function generateMockCourses(c: SearchCriteria, count: number, isFree: (d
     });
   }
   return result;
+}
+
+/**
+ * キャンパス自由検索で該当がなかったときに出す、模擬の教室。
+ * 入力した文字をそのまま教室名にし、先頭の数字が 1〜4 ならそれを階とする
+ */
+export function mockPlace(query: string): { building: string; floor: number; roomNumber: string } {
+  const q = query.trim();
+  const r = rng(hash(`place-${q}`));
+  const head = Number(q.charAt(0));
+  return {
+    building: pick(CLASSROOM_BUILDINGS, r),
+    floor: head >= 1 && head <= 4 ? head : 1,
+    roomNumber: q,
+  };
 }

@@ -6,6 +6,8 @@ import { CampusMap } from "./components/CampusMap";
 import { FloorMap } from "./components/FloorMap";
 import { CourseSearchScreen } from "./components/CourseSearchScreen";
 import { CourseEditScreen } from "./components/CourseEditScreen";
+import { CampusSearchScreen } from "./components/CampusSearchScreen";
+import type { Place } from "./data/places";
 
 export type { Course };
 
@@ -27,10 +29,10 @@ const INITIAL_COURSES: Course[] = [
   { id:"c10", name:"経営戦略論",                    building:"学部棟",  floor:3, roomNumber:"301",  professor:"小林 教授",   period:4, day:4, color:"#FDE68A" },
 ];
 
-type Screen = "timetable" | "search" | "edit" | "campus" | "floor";
+type Screen = "timetable" | "search" | "edit" | "campusSearch" | "campus" | "floor";
 
-// 開いている行き先。courseId で講義を引き直す(編集が反映されるように)
-type Target = { destination: Destination; courseId?: string };
+// 開いている行き先。courseId で講義を引き直す(編集が反映されるように)。from はキャンパスマップから戻る先
+type Target = { destination: Destination; courseId?: string; from: Screen };
 
 export default function App() {
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
@@ -40,6 +42,8 @@ export default function App() {
   // 授業を検索/登録する画面を空きコマから開いたときの曜日・時限
   const [searchSlot, setSearchSlot] = useState<{ day?: number; period?: number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  // キャンパス自由検索で最後に検索した語(地図から戻ったときに結果を出し直す)
+  const [campusQuery, setCampusQuery] = useState("");
 
   const addCourse = (data: NewCourse) => {
     const color = COLORS[courses.length % COLORS.length];
@@ -52,7 +56,12 @@ export default function App() {
   const deleteCourse = (id: string) => setCourses(p => p.filter(c => c.id !== id));
 
   const openCourse = (c: Course) => {
-    setTarget({ destination: { building: c.building, floor: c.floor, roomNumber: c.roomNumber }, courseId: c.id });
+    setTarget({ destination: { building: c.building, floor: c.floor, roomNumber: c.roomNumber }, courseId: c.id, from: "timetable" });
+    setScreen("campus");
+  };
+
+  const openPlace = (p: Place) => {
+    setTarget({ destination: { building: p.building, floor: p.floor, roomNumber: p.roomNumber }, from: "campusSearch" });
     setScreen("campus");
   };
 
@@ -117,6 +126,7 @@ export default function App() {
                 onToggleEditMode={() => setEditMode(e => !e)}
                 onSelectCourse={openCourse}
                 onOpenSearch={openSearch}
+                onOpenCampusSearch={() => { setCampusQuery(""); setScreen("campusSearch"); }}
                 onEditCourse={openEdit}
                 onDeleteCourse={deleteCourse}
               />
@@ -140,12 +150,22 @@ export default function App() {
                 onBack={backToTimetable}
               />
             )}
+            {screen === "campusSearch" && (
+              <CampusSearchScreen
+                key="campusSearch"
+                courses={courses}
+                initialQuery={campusQuery}
+                onSearch={setCampusQuery}
+                onSelectPlace={openPlace}
+                onBack={backToTimetable}
+              />
+            )}
             {screen === "campus" && target && (
               <CampusMap
                 key="cm"
                 destination={target.destination}
                 course={course}
-                onBack={() => { setScreen("timetable"); setTarget(null); }}
+                onBack={() => { setScreen(target.from); setTarget(null); }}
                 onEnterBuilding={() => setScreen("floor")}
               />
             )}

@@ -1,4 +1,4 @@
-import { Plus, Search, X } from "lucide-react";
+import { MapPin, Plus, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { Course } from "../types";
 import { DAYS, PERIODS, formatRoom, formatSlot } from "../lib/schedule";
@@ -9,11 +9,12 @@ type Props = {
   onToggleEditMode: () => void;
   onSelectCourse: (c: Course) => void;
   onOpenSearch: (day?: number, period?: number) => void;  // 授業を検索/登録する画面へ(空きコマからはその曜日・時限で)
+  onOpenCampusSearch: () => void;                          // 教室・棟を探す(キャンパス自由検索)画面へ
   onEditCourse: (c: Course) => void;
   onDeleteCourse: (id: string) => void;
 };
 
-export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse, onOpenSearch, onEditCourse, onDeleteCourse }: Props) {
+export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse, onOpenSearch, onOpenCampusSearch, onEditCourse, onDeleteCourse }: Props) {
   const getCourse = (day: number, period: number) =>
     courses.find(c => c.day === day && c.period === period);
 
@@ -42,14 +43,25 @@ export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse,
           </button>
         </div>
 
-        <button
-          onClick={() => onOpenSearch()}
-          className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl"
-          style={{ backgroundColor: "#1A73E8" }}
-        >
-          <Search size={16} color="white" />
-          <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>授業を検索/登録する</span>
-        </button>
+        {/* 主な操作(授業の登録)は塗りつぶし、場所探しは薄い色にして役割の違いを見せる */}
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <button
+            onClick={() => onOpenSearch()}
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
+            style={{ backgroundColor: "#1A73E8" }}
+          >
+            <Search size={15} color="white" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>授業を検索/登録する</span>
+          </button>
+          <button
+            onClick={onOpenCampusSearch}
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
+            style={{ backgroundColor: "#E8F0FE" }}
+          >
+            <MapPin size={15} color="#1A73E8" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#1A73E8" }}>教室・棟を探す</span>
+          </button>
+        </div>
       </div>
 
       {/* Timetable grid */}
