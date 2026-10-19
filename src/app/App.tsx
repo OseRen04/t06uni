@@ -4,6 +4,8 @@ import type { Course, Destination, NewCourse } from "./types";
 import { Timetable } from "./components/Timetable";
 import { CampusMap } from "./components/CampusMap";
 import { FloorMap } from "./components/FloorMap";
+import { CourseSearchScreen } from "./components/CourseSearchScreen";
+import { CourseEditScreen } from "./components/CourseEditScreen";
 
 export type { Course };
 
@@ -25,7 +27,7 @@ const INITIAL_COURSES: Course[] = [
   { id:"c10", name:"経営戦略論",                    building:"学部棟",  floor:3, roomNumber:"301",  professor:"小林 教授",   period:4, day:4, color:"#FDE68A" },
 ];
 
-type Screen = "timetable" | "campus" | "floor";
+type Screen = "timetable" | "search" | "edit" | "campus" | "floor";
 
 // 開いている行き先。courseId で講義を引き直す(編集が反映されるように)
 type Target = { destination: Destination; courseId?: string };
@@ -34,6 +36,10 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [target, setTarget] = useState<Target | null>(null);
   const [screen, setScreen] = useState<Screen>("timetable");
+  const [editMode, setEditMode] = useState(false);
+  // 授業を検索/登録する画面を空きコマから開いたときの曜日・時限
+  const [searchSlot, setSearchSlot] = useState<{ day?: number; period?: number }>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const addCourse = (data: NewCourse) => {
     const color = COLORS[courses.length % COLORS.length];
@@ -50,7 +56,20 @@ export default function App() {
     setScreen("campus");
   };
 
+  const openSearch = (day?: number, period?: number) => {
+    setSearchSlot({ day, period });
+    setScreen("search");
+  };
+
+  const openEdit = (c: Course) => {
+    setEditingId(c.id);
+    setScreen("edit");
+  };
+
+  const backToTimetable = () => setScreen("timetable");
+
   const course = target?.courseId ? courses.find(c => c.id === target.courseId) : undefined;
+  const editing = editingId ? courses.find(c => c.id === editingId) : undefined;
 
   return (
     <div
@@ -94,10 +113,31 @@ export default function App() {
               <Timetable
                 key="tt"
                 courses={courses}
+                editMode={editMode}
+                onToggleEditMode={() => setEditMode(e => !e)}
                 onSelectCourse={openCourse}
-                onAddCourse={addCourse}
-                onUpdateCourse={updateCourse}
+                onOpenSearch={openSearch}
+                onEditCourse={openEdit}
                 onDeleteCourse={deleteCourse}
+              />
+            )}
+            {screen === "search" && (
+              <CourseSearchScreen
+                key="search"
+                existingCourses={courses}
+                initialDay={searchSlot.day}
+                initialPeriod={searchSlot.period}
+                onRegister={data => { addCourse(data); backToTimetable(); }}
+                onBack={backToTimetable}
+              />
+            )}
+            {screen === "edit" && editing && (
+              <CourseEditScreen
+                key="edit"
+                existingCourses={courses}
+                editing={editing}
+                onSubmit={data => { updateCourse(editing.id, data); backToTimetable(); }}
+                onBack={backToTimetable}
               />
             )}
             {screen === "campus" && target && (

@@ -1,26 +1,19 @@
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import type { Course, NewCourse } from "../types";
+import type { Course } from "../types";
 import { DAYS, PERIODS, formatRoom, formatSlot } from "../lib/schedule";
-import { CourseEditModal } from "./CourseEditModal";
-import { CourseSearchModal } from "./CourseSearchModal";
 
 type Props = {
   courses: Course[];
+  editMode: boolean;
+  onToggleEditMode: () => void;
   onSelectCourse: (c: Course) => void;
-  onAddCourse: (data: NewCourse) => void;
-  onUpdateCourse: (id: string, data: NewCourse) => void;
+  onOpenSearch: (day?: number, period?: number) => void;  // 授業を検索/登録する画面へ(空きコマからはその曜日・時限で)
+  onEditCourse: (c: Course) => void;
   onDeleteCourse: (id: string) => void;
 };
 
-// 開いているモーダル。add は授業登録検索(空きコマから開いたときはその曜日・時限)、edit は登録済み講義の編集
-type FormState = { mode: "add"; day?: number; period?: number } | { mode: "edit"; editing: Course } | null;
-
-export function Timetable({ courses, onSelectCourse, onAddCourse, onUpdateCourse, onDeleteCourse }: Props) {
-  const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState<FormState>(null);
-
+export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse, onOpenSearch, onEditCourse, onDeleteCourse }: Props) {
   const getCourse = (day: number, period: number) =>
     courses.find(c => c.day === day && c.period === period);
 
@@ -36,28 +29,27 @@ export function Timetable({ courses, onSelectCourse, onAddCourse, onUpdateCourse
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#202124" }}>時間割</h1>
             <p style={{ fontSize: 11, color: "#80868B" }}>2026年度 前期</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEditMode(e => !e)}
-              className="px-3 py-1.5 rounded-xl"
-              style={{
-                fontSize: 13, fontWeight: 600,
-                backgroundColor: editMode ? "#EA4335" : "#F1F3F4",
-                color: editMode ? "white" : "#5F6368",
-              }}
-            >
-              {editMode ? "完了" : "編集"}
-            </button>
-            <button
-              onClick={() => setForm({ mode: "add" })}
-              className="w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#1A73E8" }}
-              aria-label="授業を検索して登録"
-            >
-              <Plus size={18} color="white" />
-            </button>
-          </div>
+          <button
+            onClick={onToggleEditMode}
+            className="px-3 py-1.5 rounded-xl"
+            style={{
+              fontSize: 13, fontWeight: 600,
+              backgroundColor: editMode ? "#EA4335" : "#F1F3F4",
+              color: editMode ? "white" : "#5F6368",
+            }}
+          >
+            {editMode ? "完了" : "編集"}
+          </button>
         </div>
+
+        <button
+          onClick={() => onOpenSearch()}
+          className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl"
+          style={{ backgroundColor: "#1A73E8" }}
+        >
+          <Search size={16} color="white" />
+          <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>授業を検索/登録する</span>
+        </button>
       </div>
 
       {/* Timetable grid */}
@@ -97,7 +89,7 @@ export function Timetable({ courses, onSelectCourse, onAddCourse, onUpdateCourse
                     <div className="relative w-full h-full" style={{ minHeight: 72 }}>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => (editMode ? setForm({ mode: "edit", editing: c }) : onSelectCourse(c))}
+                        onClick={() => (editMode ? onEditCourse(c) : onSelectCourse(c))}
                         className="w-full h-full rounded-xl flex flex-col justify-between p-1.5 text-left"
                         style={{
                           backgroundColor: c.color,
@@ -132,9 +124,9 @@ export function Timetable({ courses, onSelectCourse, onAddCourse, onUpdateCourse
                       </AnimatePresence>
                     </div>
                   ) : (
-                    // 空きコマをタップすると、その曜日・時限で絞り込んだ授業登録検索を開く
+                    // 空きコマをタップすると、その曜日・時限を選んだ状態で授業を検索/登録する画面を開く
                     <button
-                      onClick={() => setForm({ mode: "add", day: di, period: p.period })}
+                      onClick={() => onOpenSearch(di, p.period)}
                       className="w-full h-full rounded-xl bg-white border border-gray-100 flex items-center justify-center"
                       style={{ minHeight: 72 }}
                       aria-label={`${formatSlot(di, p.period)}に授業を登録`}
@@ -148,28 +140,6 @@ export function Timetable({ courses, onSelectCourse, onAddCourse, onUpdateCourse
           </div>
         ))}
       </div>
-
-      <AnimatePresence>
-        {form?.mode === "add" && (
-          <CourseSearchModal
-            key="add"
-            existingCourses={courses}
-            initialDay={form.day}
-            initialPeriod={form.period}
-            onRegister={data => { onAddCourse(data); setForm(null); }}
-            onClose={() => setForm(null)}
-          />
-        )}
-        {form?.mode === "edit" && (
-          <CourseEditModal
-            key="edit"
-            existingCourses={courses}
-            editing={form.editing}
-            onSubmit={data => { onUpdateCourse(form.editing.id, data); setForm(null); }}
-            onClose={() => setForm(null)}
-          />
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
