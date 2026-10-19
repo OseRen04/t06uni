@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import type { Course } from "./types";
+import type { Course, Destination, NewCourse } from "./types";
+import type { Place } from "./data/places";
 import { Timetable } from "./components/Timetable";
 import { CampusMap } from "./components/CampusMap";
 import { FloorMap } from "./components/FloorMap";
@@ -27,17 +28,35 @@ const INITIAL_COURSES: Course[] = [
 
 type Screen = "timetable" | "campus" | "floor";
 
+// 開いている行き先。時間割の講義から開いたときは courseId で講義を引き直す(編集が反映されるように)
+type Target = { destination: Destination; courseId?: string };
+
 export default function App() {
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [selected, setSelected] = useState<Course | null>(null);
+  const [target, setTarget] = useState<Target | null>(null);
   const [screen, setScreen] = useState<Screen>("timetable");
 
-  const addCourse = (data: Omit<Course, "id" | "color">) => {
+  const addCourse = (data: NewCourse) => {
     const color = COLORS[courses.length % COLORS.length];
     setCourses(p => [...p, { ...data, id: `c${Date.now()}`, color }]);
   };
 
+  const updateCourse = (id: string, data: NewCourse) =>
+    setCourses(p => p.map(c => (c.id === id ? { ...c, ...data } : c)));
+
   const deleteCourse = (id: string) => setCourses(p => p.filter(c => c.id !== id));
+
+  const openCourse = (c: Course) => {
+    setTarget({ destination: { building: c.building, floor: c.floor, roomNumber: c.roomNumber }, courseId: c.id });
+    setScreen("campus");
+  };
+
+  const openPlace = (p: Place) => {
+    setTarget({ destination: { building: p.building, floor: p.floor, roomNumber: p.roomNumber } });
+    setScreen("campus");
+  };
+
+  const course = target?.courseId ? courses.find(c => c.id === target.courseId) : undefined;
 
   return (
     <div
@@ -81,23 +100,27 @@ export default function App() {
               <Timetable
                 key="tt"
                 courses={courses}
-                onSelectCourse={c => { setSelected(c); setScreen("campus"); }}
-                onDeleteCourse={deleteCourse}
+                onSelectCourse={openCourse}
+                onSelectPlace={openPlace}
                 onAddCourse={addCourse}
+                onUpdateCourse={updateCourse}
+                onDeleteCourse={deleteCourse}
               />
             )}
-            {screen === "campus" && selected && (
+            {screen === "campus" && target && (
               <CampusMap
                 key="cm"
-                course={selected}
-                onBack={() => { setScreen("timetable"); setSelected(null); }}
+                destination={target.destination}
+                course={course}
+                onBack={() => { setScreen("timetable"); setTarget(null); }}
                 onEnterBuilding={() => setScreen("floor")}
               />
             )}
-            {screen === "floor" && selected && (
+            {screen === "floor" && target && (
               <FloorMap
                 key="fm"
-                course={selected}
+                destination={target.destination}
+                course={course}
                 onBack={() => setScreen("campus")}
               />
             )}
