@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Check, Plus, Search, X } from "lucide-react";
 import type { Course, NewCourse } from "../types";
 import { CATALOG } from "../data/catalog";
+import { generateMockCourses } from "../data/mockCourses";
 import { DAYS, PERIODS, formatLocation, formatPeriod, formatSlot } from "../lib/schedule";
 import { tokenize } from "../lib/search";
 
@@ -14,6 +15,9 @@ type Props = {
   onClose: () => void;
 };
 
+// 検索結果がこれより少ないときは、模擬の授業で補う
+const MIN_RESULTS = 3;
+
 // 授業登録検索:授業名・曜日・何コマ・教員名で授業一覧を絞り込み、結果からそのまま登録する
 export function CourseSearchModal({ existingCourses, initialDay, initialPeriod, onRegister, onClose }: Props) {
   const [name, setName] = useState("");
@@ -23,17 +27,20 @@ export function CourseSearchModal({ existingCourses, initialDay, initialPeriod, 
 
   const nameTokens = tokenize(name);
   const professorTokens = tokenize(professor);
-  const results = CATALOG
-    .filter(c =>
-      nameTokens.every(t => c.name.toLowerCase().includes(t)) &&
-      professorTokens.every(t => c.professor.toLowerCase().includes(t)) &&
-      (day === null || c.day === day) &&
-      (period === null || c.period === period)
-    )
-    .sort((a, b) => a.day - b.day || a.period - b.period);
-
   const occupant = (d: number, p: number) => existingCourses.find(c => c.day === d && c.period === p);
   const filtered = nameTokens.length > 0 || professorTokens.length > 0 || day !== null || period !== null;
+
+  const matched = CATALOG.filter(c =>
+    nameTokens.every(t => c.name.toLowerCase().includes(t)) &&
+    professorTokens.every(t => c.professor.toLowerCase().includes(t)) &&
+    (day === null || c.day === day) &&
+    (period === null || c.period === period)
+  );
+  // モック環境なので、一覧からの該当が少ないときは検索条件どおりの模擬の授業で補い、必ず結果を出す
+  const mocks = filtered && matched.length < MIN_RESULTS
+    ? generateMockCourses({ name, professor, day, period }, MIN_RESULTS - matched.length, (d, p) => !occupant(d, p))
+    : [];
+  const results = [...matched, ...mocks].sort((a, b) => a.day - b.day || a.period - b.period);
 
   const clearAll = () => { setName(""); setDay(null); setPeriod(null); setProfessor(""); };
 

@@ -1,8 +1,9 @@
 import type { NewCourse } from "../types";
+import { buildDummyCatalog } from "./mockCourses";
 
 // 授業登録検索で使う授業一覧(開講科目)。
-// 現在はプロトタイプ用のサンプルデータ。実際のシラバスのデータが手に入ったらここを置き換える
-export const CATALOG: NewCourse[] = [
+// 現在はモック環境用のダミーデータ。実際のシラバスのデータが手に入ったらここを置き換える
+const SAMPLE: NewCourse[] = [
   { name: "マーケティング・マネジメント", professor: "田中 教授",   day: 0, period: 1, building: "学部棟",  floor: 2, roomNumber: "203" },
   { name: "経営学概論",                   professor: "佐藤 教授",   day: 0, period: 2, building: "学部棟",  floor: 3, roomNumber: "302" },
   { name: "情報科学基礎",                 professor: "森 准教授",   day: 0, period: 3, building: "学部棟",  floor: 1, roomNumber: "101" },
@@ -22,4 +23,11 @@ export const CATALOG: NewCourse[] = [
   { name: "キャリアデザイン",             professor: "小林 教授",   day: 4, period: 3, building: "講義棟",  floor: 1, roomNumber: "K12" },
   { name: "経営戦略論",                   professor: "小林 教授",   day: 4, period: 4, building: "学部棟",  floor: 3, roomNumber: "301" },
   { name: "日本文化論",                   professor: "佐藤 教授",   day: 4, period: 5, building: "学部棟",  floor: 1, roomNumber: "112" },
+];
+
+// 手で書いたサンプルに、各曜日・各コマを埋めるダミーを足す(同じ枠に同じ授業名があれば手書きを優先)
+const sampleKeys = new Set(SAMPLE.map(c => `${c.day}-${c.period}-${c.name}`));
+export const CATALOG: NewCourse[] = [
+  ...SAMPLE,
+  ...buildDummyCatalog().filter(c => !sampleKeys.has(`${c.day}-${c.period}-${c.name}`)),
 ];

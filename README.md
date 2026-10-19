@@ -22,7 +22,7 @@ MVP 最終決定の項目と、それを実装している場所。
 | MVP 項目 | 内容 | 実装 |
 | --- | --- | --- |
 | 時間割の作成と編集 | 講義は授業登録検索から登録する(右上の「+」か、時間割の空きコマをタップ)。編集モードで講義をタップすると内容を変更、×で削除できる。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/app/components/Timetable.tsx)、[CourseEditModal.tsx](src/app/components/CourseEditModal.tsx) |
-| 授業登録検索(授業名、曜日、何コマ、教授の名前) | 授業名・曜日・何コマ・教員名の4つの条件で授業一覧を絞り込み、結果の「登録」ボタンで時間割に入れる。条件は組み合わせられ、空きコマから開いたときはその曜日・時限が最初から選ばれている | [CourseSearchModal.tsx](src/app/components/CourseSearchModal.tsx)、[catalog.ts](src/app/data/catalog.ts) |
+| 授業登録検索(授業名、曜日、何コマ、教授の名前) | 授業名・曜日・何コマ・教員名の4つの条件で授業一覧を絞り込み、結果の「登録」ボタンで時間割に入れる。条件は組み合わせられ、空きコマから開いたときはその曜日・時限が最初から選ばれている。モック環境のため、該当が3件未満のときは検索条件どおりの模擬の授業を自動で作って結果に出す | [CourseSearchModal.tsx](src/app/components/CourseSearchModal.tsx)、[catalog.ts](src/app/data/catalog.ts)、[mockCourses.ts](src/app/data/mockCourses.ts) |
 | 時間割表に講義名, 講義室, 棟, 階層を表示 | 各セルに講義名・棟・階・教室番号を表示する | [Timetable.tsx](src/app/components/Timetable.tsx) |
 | キャンパス自由検索(教室名, 棟の名前) | 時間割画面の検索欄で、登録済みの講義に加えてキャンパス内の教室・棟も検索し、その場所のキャンパスマップを開く | [Timetable.tsx](src/app/components/Timetable.tsx)、[places.ts](src/app/data/places.ts) |
 | 曜日時間のフォーマット | 曜日・時限・時刻の表記を「木曜 1限 8:50–10:20」の形にそろえる。表記は1つのファイルの関数で作る | [schedule.ts](src/app/lib/schedule.ts) |
@@ -49,7 +49,7 @@ MVP 最終決定の項目と、それを実装している場所。
 | --- | --- |
 | キャンパスマップは架空の配置で、GPS の緯度経度との対応が未設定(`CAMPUS_GEO = null`)。このため今は常に正門を起点に案内する | [campus.ts](src/app/data/campus.ts) の `CAMPUS_GEO` に、地図の北端・南端の緯度と西端・東端の経度を入れる |
 | フロアマップのデータがまだない | 棟・階ごとの部屋の配置データを用意する |
-| 授業一覧はサンプルデータ(19件) | [catalog.ts](src/app/data/catalog.ts) を実際のシラバスのデータに置き換える |
+| 授業一覧はダミーデータ(手書きのサンプル19件と、各曜日・各コマ3件ずつの自動生成で計94件)。検索結果が3件未満のときは模擬の授業を自動で作る | [catalog.ts](src/app/data/catalog.ts) を実際のシラバスのデータに置き換え、[mockCourses.ts](src/app/data/mockCourses.ts) の模擬データを外す |
 | 時間割の変更はページを開いている間だけ保持され、再読み込みすると初期状態に戻る | 保存(永続化)は未実装 |
 | スマホのブラウザで位置情報と方角センサーを使うには HTTPS で配信する必要がある(PC の `localhost` は例外) | 公開するときは HTTPS のホスティング(Vercel、Netlify、GitHub Pages など)を使う |
 
