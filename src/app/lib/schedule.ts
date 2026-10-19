@@ -36,15 +36,3 @@ export const formatRoom = (roomNumber: string) =>
 /** 「学部棟 1F 104号室」 */
 export const formatLocation = (c: { building: string; floor: number; roomNumber: string }) =>
   `${c.building} ${c.floor}F ${formatRoom(c.roomNumber)}`;
-
-/** 「月」「月曜」「月曜日」のどれでも曜日として扱う */
-export function matchesDay(token: string, day: number) {
-  const d = DAYS[day];
-  return token === d || token === `${d}曜` || token === `${d}曜日`;
-}
-
-/** 「1」「1限」「1コマ」「1時限」のどれでも時限として扱う */
-export function matchesPeriod(token: string, period: number) {
-  const n = token.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
-  return [`${period}`, `${period}限`, `${period}コマ`, `${period}時限`].includes(n);
-}

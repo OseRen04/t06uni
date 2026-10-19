@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import type { Course, Destination, NewCourse } from "./types";
-import type { Place } from "./data/places";
 import { Timetable } from "./components/Timetable";
 import { CampusMap } from "./components/CampusMap";
 import { FloorMap } from "./components/FloorMap";
@@ -28,7 +27,7 @@ const INITIAL_COURSES: Course[] = [
 
 type Screen = "timetable" | "campus" | "floor";
 
-// 開いている行き先。時間割の講義から開いたときは courseId で講義を引き直す(編集が反映されるように)
+// 開いている行き先。courseId で講義を引き直す(編集が反映されるように)
 type Target = { destination: Destination; courseId?: string };
 
 export default function App() {
@@ -48,11 +47,6 @@ export default function App() {
 
   const openCourse = (c: Course) => {
     setTarget({ destination: { building: c.building, floor: c.floor, roomNumber: c.roomNumber }, courseId: c.id });
-    setScreen("campus");
-  };
-
-  const openPlace = (p: Place) => {
-    setTarget({ destination: { building: p.building, floor: p.floor, roomNumber: p.roomNumber } });
     setScreen("campus");
   };
 
@@ -101,7 +95,6 @@ export default function App() {
                 key="tt"
                 courses={courses}
                 onSelectCourse={openCourse}
-                onSelectPlace={openPlace}
                 onAddCourse={addCourse}
                 onUpdateCourse={updateCourse}
                 onDeleteCourse={deleteCourse}

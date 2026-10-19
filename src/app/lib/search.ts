@@ -1,22 +1,15 @@
-import { matchesDay, matchesPeriod } from "./schedule";
-
-type Searchable = {
-  texts: string[];
-  day?: number;
-  period?: number;
-};
-
-/** 全角・半角スペースで区切った語に分ける */
+/** 全角・半角スペースで区切った語に分ける(小文字にそろえる) */
 export const tokenize = (q: string) => q.trim().toLowerCase().split(/[\s　]+/).filter(Boolean);
 
 /**
- * 区切った語がすべて、どれかの項目に当てはまれば一致とする。
- * 例:「月曜 1限 田中」→ 月曜・1限・教員名の3条件をすべて満たす講義だけが残る
+ * 検索語に一致した部分を強調表示するため、text を「一致する部分」と「しない部分」に分ける。
+ * 例: ("ミクロ経済学", ["経済"]) → [{ text: "ミクロ" }, { text: "経済", hit: true }, { text: "学" }]
  */
-export function matchesQuery(tokens: string[], item: Searchable) {
-  return tokens.every(token =>
-    item.texts.some(t => t.toLowerCase().includes(token)) ||
-    (item.day !== undefined && matchesDay(token, item.day)) ||
-    (item.period !== undefined && matchesPeriod(token, item.period))
-  );
+export function splitByTokens(text: string, tokens: string[]) {
+  if (tokens.length === 0) return [{ text, hit: false }];
+  const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return text
+    .split(new RegExp(`(${escaped.join("|")})`, "gi"))
+    .filter(Boolean)
+    .map(part => ({ text: part, hit: tokens.includes(part.toLowerCase()) }));
 }
