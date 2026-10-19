@@ -66,137 +66,140 @@ export function CourseSearchScreen({ existingCourses, initialDay, initialPeriod,
         </div>
       </div>
 
-      {/* 検索条件(結果を広く見せるため、1 行ずつに詰めている) */}
-      <div className="px-5 pt-2 pb-3 space-y-2.5" style={{ borderBottom: "1px solid #E8EAED" }}>
-        <div className="flex gap-2">
-          <SearchInput icon={<Search size={14} color="#80868B" />} label="授業名" value={name} onChange={setName} onEnter={search} />
-          <SearchInput icon={<User size={14} color="#80868B" />} label="教員名" value={professor} onChange={setProfessor} onEnter={search} />
-        </div>
+      {/* 検索条件・件数・結果をまとめてスクロールさせる(上に固定するのは画面タイトルだけ) */}
+      <div className="flex-1 overflow-y-auto">
+        {/* 検索条件 */}
+        <div className="px-5 pt-2 pb-3 space-y-2.5" style={{ borderBottom: "1px solid #E8EAED" }}>
+          <div className="flex gap-2">
+            <SearchInput icon={<Search size={14} color="#80868B" />} label="授業名" value={name} onChange={setName} onEnter={search} />
+            <SearchInput icon={<User size={14} color="#80868B" />} label="教員名" value={professor} onChange={setProfessor} onEnter={search} />
+          </div>
 
-        <ChipRow label="曜日">
-          <Chip label="すべて" selected={day === null} onClick={() => setDay(null)} wide />
-          {DAYS.map((d, i) => (
-            <Chip key={i} label={d} selected={day === i} onClick={() => setDay(i)} />
-          ))}
-        </ChipRow>
+          <ChipRow label="曜日">
+            <Chip label="すべて" selected={day === null} onClick={() => setDay(null)} wide />
+            {DAYS.map((d, i) => (
+              <Chip key={i} label={d} selected={day === i} onClick={() => setDay(i)} />
+            ))}
+          </ChipRow>
 
-        <ChipRow label="コマ">
-          <Chip label="すべて" selected={period === null} onClick={() => setPeriod(null)} wide />
-          {PERIODS.map(({ period: p }) => (
-            <Chip key={p} label={formatPeriod(p)} selected={period === p} onClick={() => setPeriod(p)} />
-          ))}
-        </ChipRow>
+          <ChipRow label="コマ">
+            <Chip label="すべて" selected={period === null} onClick={() => setPeriod(null)} wide />
+            {PERIODS.map(({ period: p }) => (
+              <Chip key={p} label={formatPeriod(p)} selected={period === p} onClick={() => setPeriod(p)} />
+            ))}
+          </ChipRow>
 
-        <div className="flex items-center gap-3 pt-1">
-          {(hasCondition || submitted) && (
-            <button onClick={clearAll} className="flex-shrink-0 px-1" style={{ fontSize: 12, fontWeight: 600, color: "#1A73E8" }}>
-              条件をクリア
-            </button>
-          )}
-          <button
-            onClick={search}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
-            style={{ backgroundColor: "#1A73E8" }}
-          >
-            <Search size={16} color="white" />
-            <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>検索</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 件数・絞り込みの切り替え(検索してから出す) */}
-      {submitted && (
-        <div className="flex items-center gap-3 px-5 py-2" style={{ backgroundColor: "#F8F9FA", borderBottom: "1px solid #E8EAED" }}>
-          <p className="flex-1" style={{ fontSize: 12, fontWeight: 700, color: "#5F6368" }}>
-            {total}件
-            {hiddenCount > 0 && (
-              <span style={{ fontWeight: 400, color: "#80868B" }}>　登録済み{hiddenCount}コマ非表示</span>
+          <div className="flex items-center gap-3 pt-1">
+            {(hasCondition || submitted) && (
+              <button onClick={clearAll} className="flex-shrink-0 px-1" style={{ fontSize: 12, fontWeight: 600, color: "#1A73E8" }}>
+                条件をクリア
+              </button>
             )}
-          </p>
-          <label className="flex items-center gap-1.5 cursor-pointer" style={{ fontSize: 12, color: "#5F6368" }}>
-            <input type="checkbox" checked={freeOnly} onChange={e => setFreeOnly(e.target.checked)} className="accent-blue-600" />
-            空きコマのみ
-          </label>
+            <button
+              onClick={search}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
+              style={{ backgroundColor: "#1A73E8" }}
+            >
+              <Search size={16} color="white" />
+              <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>検索</span>
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* 検索結果(曜日・時限ごと。見出しはスクロールしても上に残る) */}
-      <div className="flex-1 overflow-y-auto pb-8">
-        {!submitted && (
-          <div className="flex flex-col items-center gap-2 py-12 px-8 text-center">
-            <Search size={28} color="#DADCE0" />
-            <p style={{ fontSize: 13, color: "#80868B", lineHeight: 1.6 }}>
-              授業名・教員名・曜日・コマを指定して<br />「検索」を押してください
+        {/* 件数・絞り込みの切り替え(検索してから出す) */}
+        {submitted && (
+          <div className="flex items-center gap-3 px-5 py-2" style={{ backgroundColor: "#F8F9FA", borderBottom: "1px solid #E8EAED" }}>
+            <p className="flex-1" style={{ fontSize: 12, fontWeight: 700, color: "#5F6368" }}>
+              {total}件
+              {hiddenCount > 0 && (
+                <span style={{ fontWeight: 400, color: "#80868B" }}>　登録済み{hiddenCount}コマ非表示</span>
+              )}
             </p>
-            <p style={{ fontSize: 11, color: "#9AA0A6" }}>何も指定せずに検索すると、すべての授業を表示します</p>
+            <label className="flex items-center gap-1.5 cursor-pointer" style={{ fontSize: 12, color: "#5F6368" }}>
+              <input type="checkbox" checked={freeOnly} onChange={e => setFreeOnly(e.target.checked)} className="accent-blue-600" />
+              空きコマのみ
+            </label>
           </div>
         )}
 
-        {submitted && visible.length === 0 && (
-          <p className="py-10 text-center" style={{ fontSize: 13, color: "#80868B" }}>
-            空いているコマに該当する授業がありません
-            {hiddenCount > 0 && (
-              <button onClick={() => setFreeOnly(false)} className="block mx-auto mt-2" style={{ fontSize: 12, fontWeight: 600, color: "#1A73E8" }}>
-                登録済みのコマも表示する
-              </button>
-            )}
-          </p>
-        )}
-
-        {visible.map(g => (
-          <section key={`${g.day}-${g.period}`}>
-            <div
-              className="sticky top-0 z-10 flex items-center gap-2 px-5 py-1.5"
-              style={{ backgroundColor: g.occupant ? "#F1F3F4" : "#E8F0FE" }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700, color: g.occupant ? "#5F6368" : "#1A73E8" }}>
-                {formatSlot(g.day, g.period)}
-              </span>
-              <span style={{ fontSize: 11, color: "#80868B" }}>{formatPeriodTime(g.period)}</span>
-              <span className="flex-1 truncate text-right" style={{ fontSize: 11, fontWeight: 600, color: g.occupant ? "#80868B" : "#1A73E8" }}>
-                {g.occupant ? `登録済み:${g.occupant.name}` : "空き"}
-              </span>
+        {/* 検索結果(曜日・時限ごと) */}
+        <div className="pb-8">
+          {!submitted && (
+            <div className="flex flex-col items-center gap-2 py-12 px-8 text-center">
+              <Search size={28} color="#DADCE0" />
+              <p style={{ fontSize: 13, color: "#80868B", lineHeight: 1.6 }}>
+                授業名・教員名・曜日・コマを指定して<br />「検索」を押してください
+              </p>
+              <p style={{ fontSize: 11, color: "#9AA0A6" }}>何も指定せずに検索すると、すべての授業を表示します</p>
             </div>
+          )}
 
-            {g.courses.map((c, i) => {
-              const registered = g.occupant?.name === c.name;
-              const blocked = !!g.occupant && !registered;
-              return (
-                <div
-                  key={`${i}-${c.name}`}
-                  className="flex items-center gap-3 px-5 py-2.5"
-                  style={{ borderBottom: "1px solid #F1F3F4", opacity: blocked ? 0.45 : 1 }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate" style={{ fontSize: 15, fontWeight: 700, color: "#202124" }}>
-                      <Highlight text={c.name} tokens={nameTokens} />
-                    </p>
-                    <p className="truncate" style={{ fontSize: 12, color: "#5F6368" }}>
-                      <Highlight text={c.professor} tokens={professorTokens} />
-                      <span style={{ color: "#9AA0A6" }}> · </span>
-                      {formatLocation(c)}
-                    </p>
+          {submitted && visible.length === 0 && (
+            <p className="py-10 text-center" style={{ fontSize: 13, color: "#80868B" }}>
+              空いているコマに該当する授業がありません
+              {hiddenCount > 0 && (
+                <button onClick={() => setFreeOnly(false)} className="block mx-auto mt-2" style={{ fontSize: 12, fontWeight: 600, color: "#1A73E8" }}>
+                  登録済みのコマも表示する
+                </button>
+              )}
+            </p>
+          )}
+
+          {visible.map(g => (
+            <section key={`${g.day}-${g.period}`}>
+              <div
+                className="flex items-center gap-2 px-5 py-1.5"
+                style={{ backgroundColor: g.occupant ? "#F1F3F4" : "#E8F0FE" }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: g.occupant ? "#5F6368" : "#1A73E8" }}>
+                  {formatSlot(g.day, g.period)}
+                </span>
+                <span style={{ fontSize: 11, color: "#80868B" }}>{formatPeriodTime(g.period)}</span>
+                <span className="flex-1 truncate text-right" style={{ fontSize: 11, fontWeight: 600, color: g.occupant ? "#80868B" : "#1A73E8" }}>
+                  {g.occupant ? `登録済み:${g.occupant.name}` : "空き"}
+                </span>
+              </div>
+
+              {g.courses.map((c, i) => {
+                const registered = g.occupant?.name === c.name;
+                const blocked = !!g.occupant && !registered;
+                return (
+                  <div
+                    key={`${i}-${c.name}`}
+                    className="flex items-center gap-3 px-5 py-2.5"
+                    style={{ borderBottom: "1px solid #F1F3F4", opacity: blocked ? 0.45 : 1 }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate" style={{ fontSize: 15, fontWeight: 700, color: "#202124" }}>
+                        <Highlight text={c.name} tokens={nameTokens} />
+                      </p>
+                      <p className="truncate" style={{ fontSize: 12, color: "#5F6368" }}>
+                        <Highlight text={c.professor} tokens={professorTokens} />
+                        <span style={{ color: "#9AA0A6" }}> · </span>
+                        {formatLocation(c)}
+                      </p>
+                    </div>
+                    {registered ? (
+                      <span className="flex items-center gap-1 flex-shrink-0" style={{ fontSize: 12, fontWeight: 700, color: "#34A853" }}>
+                        <Check size={14} color="#34A853" />登録済み
+                      </span>
+                    ) : !blocked && (
+                      <button
+                        onClick={() => onRegister(c)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl flex-shrink-0"
+                        style={{ backgroundColor: "#1A73E8" }}
+                        aria-label={`${c.name}を登録`}
+                      >
+                        <Plus size={14} color="white" />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>登録</span>
+                      </button>
+                    )}
                   </div>
-                  {registered ? (
-                    <span className="flex items-center gap-1 flex-shrink-0" style={{ fontSize: 12, fontWeight: 700, color: "#34A853" }}>
-                      <Check size={14} color="#34A853" />登録済み
-                    </span>
-                  ) : !blocked && (
-                    <button
-                      onClick={() => onRegister(c)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl flex-shrink-0"
-                      style={{ backgroundColor: "#1A73E8" }}
-                      aria-label={`${c.name}を登録`}
-                    >
-                      <Plus size={14} color="white" />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>登録</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </section>
-        ))}
+                );
+              })}
+            </section>
+          ))}
+        </div>
       </div>
     </motion.div>
   );
