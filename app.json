@@ -28,7 +28,8 @@
         {
           "locationWhenInUsePermission": "現在地からキャンパス内の建物までの道順を表示するために位置情報を使います。"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "scheme": "campusnavi",
     "experiments": {

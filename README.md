@@ -114,7 +114,7 @@ npm start       # Expo の開発サーバーを起動(npx expo start)
 
 | 分類 | 技術 |
 | --- | --- |
-| フレームワーク | React Native 0.88 + Expo SDK 58(React 19.3) |
+| フレームワーク | React Native 0.86 + Expo SDK 57(React 19.2)。App Store 版の Expo Go が SDK 57 対応のため、これに合わせている |
 | 言語 | TypeScript 6 |
 | 画面遷移 | Expo Router(ファイルベースのルーティング、ネイティブのスタック遷移) |
 | スタイリング | React Native の `StyleSheet` |
