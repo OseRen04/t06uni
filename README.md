@@ -17,13 +17,13 @@
 
 | 機能 | 内容 | 実装コンポーネント |
 | --- | --- | --- |
-| 時間割表示 | 曜日・時限ごとに授業カードを表示する。 | [src/app/components/Timetable.tsx](src/app/components/Timetable.tsx) |
-| 授業検索 | 授業名、教室番号、建物名、担当教員から授業を探す。 | [src/app/components/Timetable.tsx](src/app/components/Timetable.tsx) |
-| 授業追加 | 授業名、曜日、時限、建物、階、教室番号を入力して追加する。同じ曜日・時限の重複は追加できない。 | [src/app/components/AddCourseModal.tsx](src/app/components/AddCourseModal.tsx) |
-| 建物までの案内 | 現在地から目的の建物までの道順と徒歩時間を表示する。 | [src/app/components/CampusMap.tsx](src/app/components/CampusMap.tsx) |
-| 建物内の案内 | フロア図・現在位置・写真・説明文を使い、3ステップ(正面玄関→エレベーター前→104講義室入口)で講義室入口まで案内する。 | [src/app/components/FloorMap.tsx](src/app/components/FloorMap.tsx) |
+| 時間割表示 | 曜日・時限ごとに授業カードを表示する。 | [src/components/Timetable.tsx](src/components/Timetable.tsx) |
+| 授業検索 | 授業名、教室番号、建物名、担当教員から授業を探す。 | [src/components/Timetable.tsx](src/components/Timetable.tsx) |
+| 授業追加 | 授業名、曜日、時限、建物、階、教室番号を入力して追加する。同じ曜日・時限の重複は追加できない。 | [src/components/AddCourseModal.tsx](src/components/AddCourseModal.tsx) |
+| 建物までの案内 | 現在地から目的の建物までの道順と徒歩時間を表示する。 | [src/components/CampusMap.tsx](src/components/CampusMap.tsx) |
+| 建物内の案内 | フロア図・現在位置・写真・説明文を使い、3ステップ(正面玄関→エレベーター前→104講義室入口)で講義室入口まで案内する。 | [src/components/FloorMap.tsx](src/components/FloorMap.tsx) |
 
-現在のプロトタイプは学部棟1F・104講義室のみを対象とする。授業の追加・削除はアプリを開いている間だけ保持され、再読み込みで初期状態に戻る(永続化は未実装)。発展機能の検討リストは [docs/t06中間報告.md](docs/t06中間報告.md) の「発展機能として検討するもの」を参照。
+現在のプロトタイプは学部棟1F・104講義室のみを対象とする。授業の追加・削除はアプリを開いている間だけ保持され、アプリを再起動すると初期状態に戻る(永続化は未実装)。発展機能の検討リストは [docs/t06中間報告.md](docs/t06中間報告.md) の「発展機能として検討するもの」を参照。
 
 ## ドキュメントの在処
 
@@ -35,17 +35,38 @@
 | [docs/利用フロー.md](docs/利用フロー.md) | 利用者が時間割から講義室入口に着くまでの操作フロー |
 | [docs/スライド.md](docs/スライド.md) | 発表用スライドのMarkdownソース(Marp形式) |
 | [docs/pdf/](docs/pdf/) | 上記ドキュメントをまとめたPDF(例: 利用フローとシステム構成.pdf) |
-| [guidelines/Guidelines.md](guidelines/Guidelines.md) | UI実装のガイドライン |
+| [AGENTS.md](AGENTS.md) | Expo / React Native 開発時の注意点(Expo のテンプレートに付属) |
 | [ATTRIBUTIONS.md](ATTRIBUTIONS.md) | 使用素材のクレジット |
 
 ## 起動方法
 
+React Native(Expo)のアプリ。Node.js 20 以上が必要。
+
 ```bash
-npm i        # 依存パッケージのインストール
-npm run dev  # 開発サーバーを起動(Vite)
+npm install     # 依存パッケージのインストール
+npm start       # Expo の開発サーバーを起動(npx expo start)
 ```
 
-本番ビルドは `npm run build`(Viteで `dist/` に出力)。
+開発サーバーが起動したら、次のどれかで開く。
+
+| 開き方 | 操作 |
+| --- | --- |
+| 実機(iPhone / Android) | スマホに Expo Go アプリを入れ、ターミナルに出る QR コードを読み取る(PC と同じ Wi-Fi に接続しておく) |
+| iOS シミュレータ | ターミナルで `i` を押す(Mac + Xcode が必要) |
+| Android エミュレータ | ターミナルで `a` を押す(Android Studio が必要) |
+| ブラウザ | ターミナルで `w` を押す。発表時の画面共有などに使える |
+
+型チェックは `npm run typecheck`、依存関係の診断は `npx expo-doctor`。ライブラリを追加するときは `npm install` ではなく `npx expo install <パッケージ名>` を使う(Expo SDK に合うバージョンが選ばれる)。
+
+### ファイル構成
+
+| パス | 内容 |
+| --- | --- |
+| [src/app/](src/app/) | 画面(Expo Router のルート)。`index.tsx` が時間割、`campus/[id].tsx` がキャンパスマップ、`floor/[id].tsx` がフロア案内 |
+| [src/components/](src/components/) | 各画面の本体(Timetable / AddCourseModal / CampusMap / FloorMap) |
+| [src/state/CoursesContext.tsx](src/state/CoursesContext.tsx) | 授業データ(初期データ・追加・削除)を全画面で共有する Context |
+| [src/types.ts](src/types.ts) | `Course` 型 |
+| [assets/](assets/) | フロア案内の写真とアプリアイコン |
 
 ## Skillについて
 
@@ -60,13 +81,14 @@ npm run dev  # 開発サーバーを起動(Vite)
 
 | 分類 | 技術 |
 | --- | --- |
-| フレームワーク | React 18, Vite 6 |
-| 言語 | TypeScript |
-| スタイリング | Tailwind CSS 4, `@tailwindcss/vite` |
-| UIコンポーネント | Radix UI, MUI (`@mui/material`), shadcn系コンポーネント一式(`src/app/components/ui/`) |
-| フォーム | react-hook-form |
-| ルーティング | react-router |
-| その他 | lucide-react(アイコン)、sonner(トースト通知)、recharts(グラフ)、date-fns |
+| フレームワーク | React Native 0.88 + Expo SDK 58(React 19.3) |
+| 言語 | TypeScript 6 |
+| 画面遷移 | Expo Router(ファイルベースのルーティング、ネイティブのスタック遷移) |
+| スタイリング | React Native の `StyleSheet` |
+| 地図の描画 | react-native-svg(キャンパスマップ)、View の絶対配置(フロア図) |
+| アニメーション | React Native 標準の `Animated` |
+| アイコン | lucide-react-native |
+| Web 表示 | react-native-web(ブラウザでも同じ画面を表示できる) |
 | PDF生成 | Node.js + marked + headless Chrome(`scripts/md_to_pdf/`) |
 
-このプロジェクトは Figma Make で生成したコードバンドルを起点にしている。元デザインは [Figma](https://www.figma.com/design/cpKA0CQzFXUiVBOxrLYnWk/%E3%83%A2%E3%83%90%E3%82%A4%E3%83%AB%E3%83%9E%E3%83%83%E3%83%97%E3%83%97%E3%83%AD%E3%83%88%E3%82%BF%E3%82%A4%E3%83%97) を参照。
+このプロジェクトは Figma Make で生成した Web 版(React + Vite + Tailwind CSS)を起点にし、React Native に移植した。Web 版のコードは git の履歴(`main` ブランチのコミット e10aba30 まで)に残っている。元デザインは [Figma](https://www.figma.com/design/cpKA0CQzFXUiVBOxrLYnWk/%E3%83%A2%E3%83%90%E3%82%A4%E3%83%AB%E3%83%9E%E3%83%83%E3%83%97%E3%83%97%E3%83%AD%E3%83%88%E3%82%BF%E3%82%A4%E3%83%97) を参照。
