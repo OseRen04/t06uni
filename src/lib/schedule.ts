@@ -29,9 +29,13 @@ export const formatSlot = (day: number, period: number) => `${formatDay(day)} ${
 export const formatSlotWithTime = (day: number, period: number) =>
   `${formatSlot(day, period)} ${formatPeriodTime(period)}`;
 
+/** 「104」→「104号室」。「アリーナ」のように番号でない教室名はそのまま */
+export const formatRoom = (roomNumber: string) =>
+  /^[\dA-Z]+$/i.test(roomNumber) ? `${roomNumber}号室` : roomNumber;
+
 /** 「学部棟 1F 104号室」 */
 export const formatLocation = (c: { building: string; floor: number; roomNumber: string }) =>
-  `${c.building} ${c.floor}F ${c.roomNumber}号室`;
+  `${c.building} ${c.floor}F ${formatRoom(c.roomNumber)}`;
 
 /** 「月」「月曜」「月曜日」のどれでも曜日として扱う */
 export function matchesDay(token: string, day: number) {

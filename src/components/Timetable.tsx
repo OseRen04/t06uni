@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Building2, MapPin, Plus, Search, X } from "lucide-react-native";
 import type { Course, NewCourse } from "@/types";
 import { searchPlaces, type Place } from "@/data/places";
-import { DAYS, PERIODS, formatLocation, formatSlot } from "@/lib/schedule";
+import { DAYS, PERIODS, formatLocation, formatRoom, formatSlot } from "@/lib/schedule";
 import { matchesQuery, tokenize } from "@/lib/search";
 import { CourseFormModal } from "./CourseFormModal";
 
@@ -128,7 +128,7 @@ export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse,
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={styles.resultName} numberOfLines={1}>{p.title}</Text>
                         <Text style={styles.resultMeta}>
-                          {p.roomNumber ? `${p.building} ${p.floor}F${p.area ? ` ${p.area}` : ""}` : "建物"}
+                          {p.roomNumber ? `${p.building} ${p.floor}F` : "建物"}
                         </Text>
                       </View>
                     </Pressable>
@@ -189,7 +189,7 @@ export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse,
                           <Text style={styles.courseName}>{c.name}</Text>
                           <View>
                             <Text style={styles.courseMeta}>{c.building} {c.floor}F</Text>
-                            <Text style={styles.courseMeta}>{c.roomNumber}号室</Text>
+                            <Text style={styles.courseMeta}>{formatRoom(c.roomNumber)}</Text>
                           </View>
                         </Pressable>
 

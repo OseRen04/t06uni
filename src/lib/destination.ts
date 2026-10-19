@@ -6,7 +6,6 @@ export type Destination = {
   building: string;
   floor?: number;
   roomNumber?: string;
-  roomId?: string;
 };
 
 export type DestinationParams = {
@@ -14,7 +13,6 @@ export type DestinationParams = {
   building?: string;
   floor?: string;
   room?: string;
-  roomId?: string;
 };
 
 export function toParams(d: Destination, course?: Course): Record<string, string> {
@@ -22,7 +20,6 @@ export function toParams(d: Destination, course?: Course): Record<string, string
   const p: Record<string, string> = { building: d.building };
   if (d.floor !== undefined) p.floor = String(d.floor);
   if (d.roomNumber) p.room = d.roomNumber;
-  if (d.roomId) p.roomId = d.roomId;
   return p;
 }
 
@@ -39,7 +36,6 @@ export function resolveDestination(params: DestinationParams, courses: Course[])
     building: params.building,
     floor: Number.isFinite(floor) ? floor : undefined,
     roomNumber: params.room,
-    roomId: params.roomId,
   };
   return { destination, course: undefined };
 }

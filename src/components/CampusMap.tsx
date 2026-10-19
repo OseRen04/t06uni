@@ -7,10 +7,9 @@ import type { Course } from "@/types";
 import {
   CAMPUS_BUILDINGS, GATE, findBuilding, findRoute, routeToPath, walkMinutes, type Point,
 } from "@/data/campus";
-import { findFloorPlan, findRoom } from "@/data/floorPlans";
 import { useCampusLocation, type LocationStatus } from "@/hooks/useCampusLocation";
 import type { Destination } from "@/lib/destination";
-import { formatSlotWithTime } from "@/lib/schedule";
+import { formatRoom, formatSlotWithTime } from "@/lib/schedule";
 
 const CARD_HEIGHT = 214;
 
@@ -144,14 +143,8 @@ function Compass() {
   );
 }
 
-/** キャンパス自由検索から開いたときのカードの見出し(例: 「104 11講義室」「104号室」「学部棟」) */
-function placeTitle(d: Destination) {
-  if (!d.roomNumber) return d.building;
-  const plan = d.floor !== undefined ? findFloorPlan(d.building, d.floor) : undefined;
-  const room = plan && findRoom(plan, d.roomNumber, d.roomId);
-  if (room?.name) return `${room.number} ${room.name}`;
-  return /^[\dA-Z]+$/i.test(d.roomNumber) ? `${d.roomNumber}号室` : d.roomNumber;
-}
+/** キャンパス自由検索から開いたときのカードの見出し(例: 「104号室」「学部棟」) */
+const placeTitle = (d: Destination) => (d.roomNumber ? formatRoom(d.roomNumber) : d.building);
 
 type Props = {
   destination: Destination;
@@ -174,7 +167,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
 
   const roomText = [
     destination.floor !== undefined ? `${destination.floor}F` : "",
-    destination.roomNumber && (/^[\dA-Z]+$/i.test(destination.roomNumber) ? `${destination.roomNumber}号室` : destination.roomNumber),
+    destination.roomNumber && formatRoom(destination.roomNumber),
   ].filter(Boolean).join("　");
 
   return (

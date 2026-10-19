@@ -1,6 +1,6 @@
 # キャンパス授業ナビ(仮)
 
-時間割から授業を選ぶだけで、現在地から建物までの道順と、建物のフロアマップ上の教室の位置を続けて確認できるモバイルアプリのプロトタイプ。
+時間割から授業を選ぶだけで、現在地から建物までの道順と、建物内の教室の位置を続けて確認できるモバイルアプリのプロトタイプ。
 
 対象ユーザーは、大学内で授業間を移動する学生(特に新入生や、初めて使う教室が多い学生)。詳しい背景・課題設定は [docs/t06中間報告.md](docs/t06中間報告.md) を参照。
 
@@ -9,7 +9,7 @@
 | 時間割画面 | キャンパスマップ画面 | フロア案内画面 |
 | --- | --- | --- |
 | ![時間割画面](画面遷移図/home.png) | ![キャンパスマップ画面](画面遷移図/campusMap.png) | ![フロア案内画面](画面遷移図/floor_01.png) |
-| 曜日・時限ごとに授業を表示し、講義・教室・棟を検索できる。 | 選んだ授業の建物までの道順と、現在地からの徒歩時間(例: 徒歩約3分)を表示する。 | 学部棟1Fのフロアマップ上で、目的の教室にピンを立てる。 |
+| 曜日・時限ごとに授業を表示し、講義・教室・棟を検索できる。 | 選んだ授業の建物までの道順と、現在地からの徒歩時間(例: 徒歩約3分)を表示する。 | 目的の教室がある棟・階のフロアマップを表示する(フロアマップのデータは未作成)。 |
 
 全画面の遷移をまとめた図は [画面遷移図/画面遷移図.png](画面遷移図/画面遷移図.png)。スクショと遷移図は MVP 確定前の版で、フロア案内画面の写真と3ステップ案内は現在のアプリにはない。
 
@@ -40,15 +40,15 @@ MVP 最終決定の項目と、それを実装している場所。
 
 | MVP 項目 | 内容 | 実装 |
 | --- | --- | --- |
-| フロアマップ | 講義の棟・階のフロアマップを表示する。フロアマップがない階は「準備中」と表示する | [FloorMap.tsx](src/components/FloorMap.tsx)、[floorPlans.ts](src/data/floorPlans.ts) |
-| 目的の教室のピン | 講義の教室番号(または検索した教室)をフロアマップ上で探し、赤枠とピンで示す | [FloorMap.tsx](src/components/FloorMap.tsx) |
+| フロアマップ | **未実装(データ待ち)**。画面には「ここにフロアマップを表示」という枠と、行き先の棟・階・教室だけを表示している | [FloorMap.tsx](src/components/FloorMap.tsx) |
+| 目的の教室のピン | **未実装(データ待ち)**。フロアマップのデータができたら、教室番号で部屋を探してピンを立てる | [FloorMap.tsx](src/components/FloorMap.tsx) |
 
 ### 現在の制約
 
 | 制約 | 対応方法 |
 | --- | --- |
 | キャンパスマップは架空の配置で、GPS の緯度経度との対応が未設定(`CAMPUS_GEO = null`)。このため今は常に正門を起点に案内する | [campus.ts](src/data/campus.ts) の `CAMPUS_GEO` に、地図の北端・南端の緯度と西端・東端の経度を入れる |
-| フロアマップがあるのは学部棟 1F だけ | [floorPlans.ts](src/data/floorPlans.ts) の `FLOOR_PLANS` に、棟・階ごとの部屋の配置を追加する |
+| フロアマップのデータがまだない(どの階も「ここにフロアマップを表示」と表示する) | 棟・階ごとの部屋の配置データを用意する。以前の Figma 由来の学部棟 1F の図は、コミット 7353eeb6 の `src/data/floorPlans.ts` に残っている |
 | 授業一覧はサンプルデータ(19件) | [catalog.ts](src/data/catalog.ts) を実際のシラバスのデータに置き換える |
 | 時間割の変更はアプリを開いている間だけ保持され、再起動すると初期状態に戻る | 端末への保存(永続化)は未実装 |
 | 方角の表示と GPS の許可ダイアログの文言は、実機で確認していない | Expo Go で実機確認する |
@@ -95,7 +95,7 @@ npm start       # Expo の開発サーバーを起動(npx expo start)
 | [src/app/](src/app/) | 画面(Expo Router のルート)。`index.tsx` が時間割、`campus.tsx` がキャンパスマップ、`floor.tsx` がフロアマップ |
 | [src/components/](src/components/) | 各画面の本体(Timetable / CourseFormModal / CampusMap / FloorMap) |
 | [src/state/CoursesContext.tsx](src/state/CoursesContext.tsx) | 授業データ(初期データ・追加・削除)を全画面で共有する Context |
-| [src/data/](src/data/) | キャンパスの建物・道路と経路探索、フロアマップ、授業一覧、場所検索のデータ |
+| [src/data/](src/data/) | キャンパスの建物・道路と経路探索、授業一覧、場所検索のデータ |
 | [src/lib/](src/lib/) | 曜日・時限の表記、検索の条件判定、画面に渡す行き先の変換 |
 | [src/hooks/useCampusLocation.ts](src/hooks/useCampusLocation.ts) | GPS の現在地と端末の向きを地図座標で返す |
 | [src/types.ts](src/types.ts) | `Course` 型 |
@@ -118,7 +118,7 @@ npm start       # Expo の開発サーバーを起動(npx expo start)
 | 言語 | TypeScript 6 |
 | 画面遷移 | Expo Router(ファイルベースのルーティング、ネイティブのスタック遷移) |
 | スタイリング | React Native の `StyleSheet` |
-| 地図の描画 | react-native-svg(キャンパスマップ)、View の絶対配置(フロアマップ) |
+| 地図の描画 | react-native-svg(キャンパスマップ) |
 | 位置情報 | expo-location(GPS の現在地と端末の向き) |
 | アニメーション | React Native 標準の `Animated` |
 | アイコン | lucide-react-native |
