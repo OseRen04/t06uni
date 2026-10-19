@@ -1,6 +1,6 @@
 # キャンパス授業ナビ(仮)
 
-時間割から授業を選ぶだけで、建物までの道順と、建物内で講義室入口へ向かう案内を続けて確認できるモバイルアプリのプロトタイプ。
+時間割から授業を選ぶだけで、現在地から建物までの道順と、建物のフロアマップ上の教室の位置を続けて確認できるモバイルアプリのプロトタイプ。
 
 対象ユーザーは、大学内で授業間を移動する学生(特に新入生や、初めて使う教室が多い学生)。詳しい背景・課題設定は [docs/t06中間報告.md](docs/t06中間報告.md) を参照。
 
@@ -9,21 +9,51 @@
 | 時間割画面 | キャンパスマップ画面 | フロア案内画面 |
 | --- | --- | --- |
 | ![時間割画面](画面遷移図/home.png) | ![キャンパスマップ画面](画面遷移図/campusMap.png) | ![フロア案内画面](画面遷移図/floor_01.png) |
-| 曜日・時限ごとに授業を表示し、講義名・教室・棟で検索できる。 | 選んだ授業の建物までの道順と、現在地からの徒歩時間(例: 徒歩約3分)を表示する。 | 学部棟1Fの正面玄関から104講義室入口まで、3ステップで写真付き案内をする。 |
+| 曜日・時限ごとに授業を表示し、講義・教室・棟を検索できる。 | 選んだ授業の建物までの道順と、現在地からの徒歩時間(例: 徒歩約3分)を表示する。 | 学部棟1Fのフロアマップ上で、目的の教室にピンを立てる。 |
 
-全画面の遷移をまとめた図は [画面遷移図/画面遷移図.png](画面遷移図/画面遷移図.png)。
+全画面の遷移をまとめた図は [画面遷移図/画面遷移図.png](画面遷移図/画面遷移図.png)。スクショと遷移図は MVP 確定前の版で、フロア案内画面の写真と3ステップ案内は現在のアプリにはない。
 
 ## 仕様(MVPの必須機能)
 
-| 機能 | 内容 | 実装コンポーネント |
-| --- | --- | --- |
-| 時間割表示 | 曜日・時限ごとに授業カードを表示する。 | [src/components/Timetable.tsx](src/components/Timetable.tsx) |
-| 授業検索 | 授業名、教室番号、建物名、担当教員から授業を探す。 | [src/components/Timetable.tsx](src/components/Timetable.tsx) |
-| 授業追加 | 授業名、曜日、時限、建物、階、教室番号を入力して追加する。同じ曜日・時限の重複は追加できない。 | [src/components/AddCourseModal.tsx](src/components/AddCourseModal.tsx) |
-| 建物までの案内 | 現在地から目的の建物までの道順と徒歩時間を表示する。 | [src/components/CampusMap.tsx](src/components/CampusMap.tsx) |
-| 建物内の案内 | フロア図・現在位置・写真・説明文を使い、3ステップ(正面玄関→エレベーター前→104講義室入口)で講義室入口まで案内する。 | [src/components/FloorMap.tsx](src/components/FloorMap.tsx) |
+MVP 最終決定の項目と、それを実装している場所。
 
-現在のプロトタイプは学部棟1F・104講義室のみを対象とする。授業の追加・削除はアプリを開いている間だけ保持され、アプリを再起動すると初期状態に戻る(永続化は未実装)。発展機能の検討リストは [docs/t06中間報告.md](docs/t06中間報告.md) の「発展機能として検討するもの」を参照。
+### 時間割
+
+| MVP 項目 | 内容 | 実装 |
+| --- | --- | --- |
+| 時間割の作成と編集 | 講義の追加、編集モードでの内容の変更(講義をタップ)と削除(×)。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/components/Timetable.tsx)、[CourseFormModal.tsx](src/components/CourseFormModal.tsx) |
+| 授業登録検索(授業名、曜日、何コマ、教授の名前) | 講義の追加画面で授業一覧を検索し、「登録」ボタンでそのまま時間割に入れる。「月曜 2限」「田中」のように複数の条件を空白区切りで組み合わせられる。見つからない授業は手入力で追加できる | [CourseFormModal.tsx](src/components/CourseFormModal.tsx)、[catalog.ts](src/data/catalog.ts) |
+| 時間割表に講義名, 講義室, 棟, 階層を表示 | 各セルに講義名・棟・階・教室番号を表示する | [Timetable.tsx](src/components/Timetable.tsx) |
+| キャンパス自由検索(教室名, 棟の名前) | 時間割画面の検索欄で、登録済みの講義に加えてキャンパス内の教室・棟も検索し、その場所のキャンパスマップを開く | [Timetable.tsx](src/components/Timetable.tsx)、[places.ts](src/data/places.ts) |
+| 曜日時間のフォーマット | 曜日・時限・時刻の表記を「木曜 1限 8:50–10:20」の形にそろえる。表記は1つのファイルの関数で作る | [schedule.ts](src/lib/schedule.ts) |
+
+### キャンパスマップ
+
+| MVP 項目 | 内容 | 実装 |
+| --- | --- | --- |
+| 現在地(GPS) | 端末の GPS で現在地を取り、地図上に表示する。位置情報が許可されていない・キャンパスの外にいる・取得できないときは、正門を仮の現在地にして理由を表示する | [useCampusLocation.ts](src/hooks/useCampusLocation.ts) |
+| 大学マップ | 建物・道路・緑地を描いたキャンパスマップ。目的の建物を強調し、ピンを立てる | [CampusMap.tsx](src/components/CampusMap.tsx)、[campus.ts](src/data/campus.ts) |
+| 方角 | 北を示す方位磁針に加え、現在地マーカーに端末が向いている方角を扇形で表示する(iPhone / Android のみ。ブラウザでは方角を取れない) | [CampusMap.tsx](src/components/CampusMap.tsx) |
+| 案内経路 | 現在地から目的の建物の入口まで、道路に沿った最短経路を描き、徒歩時間を計算する | [campus.ts](src/data/campus.ts) の `findRoute` |
+
+### フロアマップ
+
+| MVP 項目 | 内容 | 実装 |
+| --- | --- | --- |
+| フロアマップ | 講義の棟・階のフロアマップを表示する。フロアマップがない階は「準備中」と表示する | [FloorMap.tsx](src/components/FloorMap.tsx)、[floorPlans.ts](src/data/floorPlans.ts) |
+| 目的の教室のピン | 講義の教室番号(または検索した教室)をフロアマップ上で探し、赤枠とピンで示す | [FloorMap.tsx](src/components/FloorMap.tsx) |
+
+### 現在の制約
+
+| 制約 | 対応方法 |
+| --- | --- |
+| キャンパスマップは架空の配置で、GPS の緯度経度との対応が未設定(`CAMPUS_GEO = null`)。このため今は常に正門を起点に案内する | [campus.ts](src/data/campus.ts) の `CAMPUS_GEO` に、地図の北端・南端の緯度と西端・東端の経度を入れる |
+| フロアマップがあるのは学部棟 1F だけ | [floorPlans.ts](src/data/floorPlans.ts) の `FLOOR_PLANS` に、棟・階ごとの部屋の配置を追加する |
+| 授業一覧はサンプルデータ(19件) | [catalog.ts](src/data/catalog.ts) を実際のシラバスのデータに置き換える |
+| 時間割の変更はアプリを開いている間だけ保持され、再起動すると初期状態に戻る | 端末への保存(永続化)は未実装 |
+| 方角の表示と GPS の許可ダイアログの文言は、実機で確認していない | Expo Go で実機確認する |
+
+発展機能の検討リストは [docs/t06中間報告.md](docs/t06中間報告.md) の「発展機能として検討するもの」を参照。
 
 ## ドキュメントの在処
 
@@ -62,11 +92,14 @@ npm start       # Expo の開発サーバーを起動(npx expo start)
 
 | パス | 内容 |
 | --- | --- |
-| [src/app/](src/app/) | 画面(Expo Router のルート)。`index.tsx` が時間割、`campus/[id].tsx` がキャンパスマップ、`floor/[id].tsx` がフロア案内 |
-| [src/components/](src/components/) | 各画面の本体(Timetable / AddCourseModal / CampusMap / FloorMap) |
+| [src/app/](src/app/) | 画面(Expo Router のルート)。`index.tsx` が時間割、`campus.tsx` がキャンパスマップ、`floor.tsx` がフロアマップ |
+| [src/components/](src/components/) | 各画面の本体(Timetable / CourseFormModal / CampusMap / FloorMap) |
 | [src/state/CoursesContext.tsx](src/state/CoursesContext.tsx) | 授業データ(初期データ・追加・削除)を全画面で共有する Context |
+| [src/data/](src/data/) | キャンパスの建物・道路と経路探索、フロアマップ、授業一覧、場所検索のデータ |
+| [src/lib/](src/lib/) | 曜日・時限の表記、検索の条件判定、画面に渡す行き先の変換 |
+| [src/hooks/useCampusLocation.ts](src/hooks/useCampusLocation.ts) | GPS の現在地と端末の向きを地図座標で返す |
 | [src/types.ts](src/types.ts) | `Course` 型 |
-| [assets/](assets/) | フロア案内の写真とアプリアイコン |
+| [assets/](assets/) | アプリアイコンと、報告書で使っている写真(アプリでは使っていない) |
 
 ## Skillについて
 
@@ -85,7 +118,8 @@ npm start       # Expo の開発サーバーを起動(npx expo start)
 | 言語 | TypeScript 6 |
 | 画面遷移 | Expo Router(ファイルベースのルーティング、ネイティブのスタック遷移) |
 | スタイリング | React Native の `StyleSheet` |
-| 地図の描画 | react-native-svg(キャンパスマップ)、View の絶対配置(フロア図) |
+| 地図の描画 | react-native-svg(キャンパスマップ)、View の絶対配置(フロアマップ) |
+| 位置情報 | expo-location(GPS の現在地と端末の向き) |
 | アニメーション | React Native 標準の `Animated` |
 | アイコン | lucide-react-native |
 | Web 表示 | react-native-web(ブラウザでも同じ画面を表示できる) |

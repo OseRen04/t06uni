@@ -1,44 +1,46 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Plus, Search, X } from "lucide-react-native";
+import { Building2, MapPin, Plus, Search, X } from "lucide-react-native";
 import type { Course, NewCourse } from "@/types";
-import { AddCourseModal } from "./AddCourseModal";
-
-const DAYS = ["月", "火", "水", "木", "金"];
-const PERIODS = [
-  { n: "1", time: ["8:50", "10:20"] },
-  { n: "2", time: ["10:30", "12:00"] },
-  { n: "3", time: ["13:00", "14:30"] },
-  { n: "4", time: ["14:40", "16:10"] },
-  { n: "5", time: ["16:20", "17:50"] },
-];
+import { searchPlaces, type Place } from "@/data/places";
+import { DAYS, PERIODS, formatLocation, formatSlot } from "@/lib/schedule";
+import { matchesQuery, tokenize } from "@/lib/search";
+import { CourseFormModal } from "./CourseFormModal";
 
 type Props = {
   courses: Course[];
   onSelectCourse: (c: Course) => void;
-  onDeleteCourse: (id: string) => void;
+  onSelectPlace: (p: Place) => void;
   onAddCourse: (data: NewCourse) => void;
+  onUpdateCourse: (id: string, data: NewCourse) => void;
+  onDeleteCourse: (id: string) => void;
 };
 
-export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse }: Props) {
+// 講義の追加・編集モーダルの状態。editing は編集中の講義
+type FormState = { mode: "add" } | { mode: "edit"; editing: Course } | null;
+
+export function Timetable({ courses, onSelectCourse, onSelectPlace, onAddCourse, onUpdateCourse, onDeleteCourse }: Props) {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<FormState>(null);
 
-  const q = search.trim().toLowerCase();
-  const searchResults = q
+  const tokens = tokenize(search);
+  const searching = tokens.length > 0;
+  // 登録済みの講義:授業名・曜日・時限・教員名・教室・棟で検索
+  const courseResults = searching
     ? courses.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.roomNumber.toLowerCase().includes(q) ||
-        c.building.toLowerCase().includes(q) ||
-        c.professor.toLowerCase().includes(q)
+        matchesQuery(tokens, { texts: [c.name, c.professor, c.roomNumber, c.building], day: c.day, period: c.period })
       )
     : [];
+  // キャンパス自由検索:教室名・棟の名前で検索
+  const placeResults = searching ? searchPlaces(search) : [];
 
   const getCourse = (day: number, period: number) =>
     courses.find(c => c.day === day && c.period === period);
+
+  const clearSearch = () => setSearch("");
 
   return (
     <View style={styles.root}>
@@ -58,7 +60,7 @@ export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse
                 {editMode ? "完了" : "編集"}
               </Text>
             </Pressable>
-            <Pressable onPress={() => setShowAdd(true)} style={styles.addButton} accessibilityLabel="講義を追加">
+            <Pressable onPress={() => setForm({ mode: "add" })} style={styles.addButton} accessibilityLabel="講義を追加">
               <Plus size={18} color="white" />
             </Pressable>
           </View>
@@ -68,7 +70,7 @@ export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse
         <View style={styles.searchBar}>
           <Search size={14} color="#80868B" />
           <TextInput
-            placeholder="講義名・教室・棟で検索"
+            placeholder="講義名・曜日・時限・教員・教室・棟で検索"
             placeholderTextColor="#9AA0A6"
             value={search}
             onChangeText={setSearch}
@@ -76,45 +78,70 @@ export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse
             returnKeyType="search"
           />
           {search !== "" && (
-            <Pressable onPress={() => setSearch("")} hitSlop={8} accessibilityLabel="検索をクリア">
+            <Pressable onPress={clearSearch} hitSlop={8} accessibilityLabel="検索をクリア">
               <X size={14} color="#80868B" />
             </Pressable>
           )}
         </View>
       </View>
 
-      {/* Search results list */}
-      {q !== "" && (
-        <ScrollView style={styles.results} keyboardShouldPersistTaps="handled">
-          {searchResults.length === 0 ? (
+      {/* Search results */}
+      {searching && (
+        <ScrollView style={styles.results} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+          {courseResults.length === 0 && placeResults.length === 0 ? (
             <View style={styles.noResults}>
-              <Text style={styles.noResultsText}>「{search}」に一致する講義なし</Text>
+              <Text style={styles.noResultsText}>「{search.trim()}」に一致する講義・場所なし</Text>
             </View>
           ) : (
-            <View>
-              <Text style={styles.resultCount}>{searchResults.length}件</Text>
-              {searchResults.map(c => (
-                <Pressable
-                  key={c.id}
-                  onPress={() => { setSearch(""); onSelectCourse(c); }}
-                  style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: "#F8F9FA" }]}
-                >
-                  <View style={[styles.resultDot, { backgroundColor: c.color }]} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.resultName} numberOfLines={1}>{c.name}</Text>
-                    <Text style={styles.resultMeta}>
-                      {DAYS[c.day]}曜 {c.period}限　{c.building} {c.floor}F {c.roomNumber}号室
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+            <>
+              {courseResults.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>登録済みの講義 {courseResults.length}件</Text>
+                  {courseResults.map(c => (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => { clearSearch(); onSelectCourse(c); }}
+                      style={({ pressed }) => [styles.resultRow, pressed && styles.resultPressed]}
+                    >
+                      <View style={[styles.resultDot, { backgroundColor: c.color }]} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.resultName} numberOfLines={1}>{c.name}</Text>
+                        <Text style={styles.resultMeta}>
+                          {formatSlot(c.day, c.period)}　{formatLocation(c)}{c.professor ? `　${c.professor}` : ""}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </>
+              )}
+
+              {placeResults.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>キャンパス内の場所 {placeResults.length}件</Text>
+                  {placeResults.map(p => (
+                    <Pressable
+                      key={p.key}
+                      onPress={() => { clearSearch(); onSelectPlace(p); }}
+                      style={({ pressed }) => [styles.resultRow, pressed && styles.resultPressed]}
+                    >
+                      {p.roomNumber ? <MapPin size={16} color="#EA4335" /> : <Building2 size={16} color="#1A73E8" />}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.resultName} numberOfLines={1}>{p.title}</Text>
+                        <Text style={styles.resultMeta}>
+                          {p.roomNumber ? `${p.building} ${p.floor}F${p.area ? ` ${p.area}` : ""}` : "建物"}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </>
+              )}
+            </>
           )}
         </ScrollView>
       )}
 
       {/* Timetable grid */}
-      {q === "" && (
+      {!searching && (
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 16 }]}
@@ -128,32 +155,36 @@ export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse
             ))}
           </View>
 
+          {editMode && (
+            <Text style={styles.editHint}>講義をタップすると内容を編集、×で削除できます</Text>
+          )}
+
           {/* Period rows */}
           {PERIODS.map((p, pi) => (
             // 1限の行だけ、編集モードの削除バッジが固定ヘッダーに隠れないよう上に余白を取る
-            <View key={pi} style={[styles.periodRow, pi === 0 && { marginTop: 6 }]}>
+            <View key={p.period} style={[styles.periodRow, pi === 0 && { marginTop: 6 }]}>
               {/* Period label */}
               <View style={[styles.periodColumn, styles.periodLabel]}>
-                <Text style={styles.periodNumber}>{p.n}</Text>
-                {p.time.map(t => (
-                  <Text key={t} style={styles.periodTime}>{t}</Text>
-                ))}
+                <Text style={styles.periodNumber}>{p.period}</Text>
+                <Text style={styles.periodTime}>{p.start}</Text>
+                <Text style={styles.periodTime}>{p.end}</Text>
               </View>
 
               {/* Day cells */}
               {DAYS.map((_, di) => {
-                const c = getCourse(di, pi + 1);
+                const c = getCourse(di, p.period);
                 return (
                   <View key={di} style={styles.cell}>
                     {c ? (
                       <View style={{ flex: 1 }}>
                         <Pressable
-                          onPress={() => !editMode && onSelectCourse(c)}
+                          onPress={() => (editMode ? setForm({ mode: "edit", editing: c }) : onSelectCourse(c))}
                           style={({ pressed }) => [
                             styles.courseCard,
                             { backgroundColor: c.color },
-                            pressed && !editMode && { transform: [{ scale: 0.95 }] },
+                            pressed && { transform: [{ scale: 0.95 }] },
                           ]}
+                          accessibilityLabel={editMode ? `${c.name}を編集` : c.name}
                         >
                           <Text style={styles.courseName}>{c.name}</Text>
                           <View>
@@ -185,11 +216,16 @@ export function Timetable({ courses, onSelectCourse, onDeleteCourse, onAddCourse
         </ScrollView>
       )}
 
-      {showAdd && (
-        <AddCourseModal
+      {form && (
+        <CourseFormModal
           existingCourses={courses}
-          onAdd={data => { onAddCourse(data); setShowAdd(false); }}
-          onClose={() => setShowAdd(false)}
+          editing={form.mode === "edit" ? form.editing : undefined}
+          onSubmit={data => {
+            if (form.mode === "edit") onUpdateCourse(form.editing.id, data);
+            else onAddCourse(data);
+            setForm(null);
+          }}
+          onClose={() => setForm(null)}
         />
       )}
     </View>
@@ -225,18 +261,24 @@ const styles = StyleSheet.create({
   results: { flex: 1, backgroundColor: "white" },
   noResults: { height: 160, alignItems: "center", justifyContent: "center" },
   noResultsText: { fontSize: 15, color: "#80868B" },
-  resultCount: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, fontSize: 12, color: "#80868B", fontWeight: "600" },
+  sectionTitle: {
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
+    fontSize: 12, color: "#80868B", fontWeight: "700",
+    backgroundColor: "#F9FAFB",
+  },
   resultRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: "#F1F3F4",
   },
-  resultDot: { width: 12, height: 12, borderRadius: 6 },
+  resultPressed: { backgroundColor: "#F8F9FA" },
+  resultDot: { width: 12, height: 12, borderRadius: 6, marginHorizontal: 2 },
   resultName: { fontSize: 15, fontWeight: "600", color: "#202124" },
-  resultMeta: { fontSize: 11, color: "#80868B" },
+  resultMeta: { fontSize: 11, color: "#80868B", marginTop: 1 },
   grid: { paddingHorizontal: 8 },
   dayHeader: { flexDirection: "row", backgroundColor: "#F9FAFB", paddingTop: 8, paddingBottom: 4 },
   dayHeaderText: { flex: 1, textAlign: "center", fontSize: 13, fontWeight: "600", color: "#5F6368" },
+  editHint: { fontSize: 11, color: "#EA4335", textAlign: "center", marginTop: 2 },
   periodColumn: { width: 38 },
   periodRow: { flexDirection: "row", alignItems: "stretch", marginBottom: 4 },
   periodLabel: { alignItems: "center", justifyContent: "center", paddingRight: 4 },

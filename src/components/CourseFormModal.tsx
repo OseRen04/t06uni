@@ -15,28 +15,31 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { Plus, Search, X } from "lucide-react-native";
 import type { Course, NewCourse } from "@/types";
-
-const BUILDINGS = ["学部棟", "研究棟A", "研究棟B", "図書館", "体育館", "講義棟"];
-const DAYS = ["月", "火", "水", "木", "金"];
+import { CATALOG } from "@/data/catalog";
+import { CLASSROOM_BUILDINGS } from "@/data/campus";
+import { DAYS, PERIODS, formatLocation, formatPeriod, formatSlot } from "@/lib/schedule";
+import { matchesQuery, tokenize } from "@/lib/search";
 
 type Props = {
   existingCourses: Course[];
-  onAdd: (data: NewCourse) => void;
+  editing?: Course;   // 指定があれば編集モード
+  onSubmit: (data: NewCourse) => void;
   onClose: () => void;
 };
 
-export function AddCourseModal({ existingCourses, onAdd, onClose }: Props) {
+export function CourseFormModal({ existingCourses, editing, onSubmit, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const [name, setName] = useState("");
-  const [building, setBuilding] = useState("学部棟");
-  const [floor, setFloor] = useState(1);
-  const [roomNumber, setRoomNumber] = useState("");
-  const [professor, setProfessor] = useState("");
-  const [day, setDay] = useState(0);
-  const [period, setPeriod] = useState(1);
+  const [query, setQuery] = useState("");
+  const [name, setName] = useState(editing?.name ?? "");
+  const [building, setBuilding] = useState(editing?.building ?? CLASSROOM_BUILDINGS[0]);
+  const [floor, setFloor] = useState(editing?.floor ?? 1);
+  const [roomNumber, setRoomNumber] = useState(editing?.roomNumber ?? "");
+  const [professor, setProfessor] = useState(editing?.professor ?? "");
+  const [day, setDay] = useState(editing?.day ?? 0);
+  const [period, setPeriod] = useState(editing?.period ?? 1);
 
   // 0 = 閉じている, 1 = 開いている。背景の透明度とシートの位置を同じ値で動かす
   const progress = useRef(new Animated.Value(0)).current;
@@ -49,16 +52,26 @@ export function AddCourseModal({ existingCourses, onAdd, onClose }: Props) {
     Animated.timing(progress, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => then());
   };
 
-  const conflict = existingCourses.some(c => c.day === day && c.period === period);
+  // 編集中の講義自身とは重複扱いしない
+  const others = existingCourses.filter(c => c.id !== editing?.id);
+  const occupant = (d: number, p: number) => others.find(c => c.day === d && c.period === p);
+  const conflict = occupant(day, period);
   const canSubmit = name.trim() !== "" && roomNumber.trim() !== "" && !conflict;
 
-  const handleAdd = () => {
+  const submit = (data: NewCourse) => animateOut(() => onSubmit(data));
+
+  const handleSubmit = () => {
     if (!canSubmit) return;
-    const data = { name: name.trim(), building, floor, roomNumber: roomNumber.trim(), professor: professor.trim(), day, period };
-    animateOut(() => onAdd(data));
+    submit({ name: name.trim(), building, floor, roomNumber: roomNumber.trim(), professor: professor.trim(), day, period });
   };
 
   const close = () => animateOut(onClose);
+
+  // 授業登録検索:授業名・曜日・時限(何コマ)・教員名で授業一覧を探す
+  const tokens = tokenize(query);
+  const catalogResults = tokens.length
+    ? CATALOG.filter(c => matchesQuery(tokens, { texts: [c.name, c.professor], day: c.day, period: c.period }))
+    : [];
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
@@ -89,11 +102,72 @@ export function AddCourseModal({ existingCourses, onAdd, onClose }: Props) {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.titleRow}>
-              <Text style={styles.title}>講義を追加</Text>
+              <Text style={styles.title}>{editing ? "講義を編集" : "講義を追加"}</Text>
               <Pressable onPress={close} style={styles.closeButton} accessibilityLabel="閉じる">
                 <X size={16} color="#5F6368" />
               </Pressable>
             </View>
+
+            {/* 授業登録検索(追加のときだけ) */}
+            {!editing && (
+              <View style={styles.catalog}>
+                <Text style={styles.label}>授業を検索して登録</Text>
+                <View style={styles.catalogSearch}>
+                  <Search size={14} color="#80868B" />
+                  <TextInput
+                    value={query} onChangeText={setQuery}
+                    placeholder="授業名・曜日・何コマ・教員名(例:月曜 2限)" placeholderTextColor="#9AA0A6"
+                    style={styles.catalogInput}
+                  />
+                  {query !== "" && (
+                    <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityLabel="検索をクリア">
+                      <X size={14} color="#80868B" />
+                    </Pressable>
+                  )}
+                </View>
+
+                {tokens.length > 0 && catalogResults.length === 0 && (
+                  <Text style={styles.catalogEmpty}>一致する授業がありません。下のフォームから手入力で追加できます</Text>
+                )}
+                {catalogResults.map(c => {
+                  const taken = occupant(c.day, c.period);
+                  const registered = taken?.name === c.name;
+                  return (
+                    <View key={`${c.name}-${c.day}-${c.period}`} style={styles.catalogRow}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.catalogName} numberOfLines={1}>{c.name}</Text>
+                        <Text style={styles.catalogMeta}>{formatSlot(c.day, c.period)}　{c.professor}</Text>
+                        <Text style={styles.catalogMeta}>{formatLocation(c)}</Text>
+                        {taken && !registered && (
+                          <Text style={styles.catalogConflict}>この時間には「{taken.name}」が登録済み</Text>
+                        )}
+                      </View>
+                      <Pressable
+                        onPress={() => submit(c)}
+                        disabled={!!taken}
+                        style={[styles.catalogAdd, taken && styles.catalogAddDisabled]}
+                        accessibilityLabel={`${c.name}を登録`}
+                      >
+                        {registered ? (
+                          <Text style={styles.catalogAddDoneText}>登録済み</Text>
+                        ) : (
+                          <>
+                            <Plus size={14} color={taken ? "#9AA0A6" : "white"} />
+                            <Text style={[styles.catalogAddText, taken && { color: "#9AA0A6" }]}>登録</Text>
+                          </>
+                        )}
+                      </Pressable>
+                    </View>
+                  );
+                })}
+
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>見つからないときは手入力</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              </View>
+            )}
 
             <View style={{ gap: 20 }}>
               {/* 講義名 */}
@@ -125,19 +199,19 @@ export function AddCourseModal({ existingCourses, onAdd, onClose }: Props) {
 
               <Field label="時限">
                 <View style={styles.chipRow}>
-                  {[1, 2, 3, 4, 5].map(p => (
-                    <Chip key={p} label={`${p}限`} selected={period === p} onPress={() => setPeriod(p)} style={{ flex: 1 }} />
+                  {PERIODS.map(({ period: p }) => (
+                    <Chip key={p} label={formatPeriod(p)} selected={period === p} onPress={() => setPeriod(p)} style={{ flex: 1 }} />
                   ))}
                 </View>
                 {conflict && (
-                  <Text style={styles.conflict}>⚠ この曜日・時限にはすでに講義があります</Text>
+                  <Text style={styles.conflict}>⚠ {formatSlot(day, period)}にはすでに「{conflict.name}」があります</Text>
                 )}
               </Field>
 
               {/* 棟 */}
               <Field label="棟">
                 <View style={[styles.chipRow, { flexWrap: "wrap", gap: 8 }]}>
-                  {BUILDINGS.map(b => (
+                  {CLASSROOM_BUILDINGS.map(b => (
                     <Chip
                       key={b} label={b} selected={building === b} onPress={() => setBuilding(b)}
                       small style={{ paddingHorizontal: 14, paddingVertical: 8 }}
@@ -168,11 +242,13 @@ export function AddCourseModal({ existingCourses, onAdd, onClose }: Props) {
             </View>
 
             <Pressable
-              onPress={handleAdd}
+              onPress={handleSubmit}
               disabled={!canSubmit}
               style={[styles.submit, { backgroundColor: canSubmit ? "#1A73E8" : "#E8EAED" }]}
             >
-              <Text style={[styles.submitText, { color: canSubmit ? "white" : "#9AA0A6" }]}>追加する</Text>
+              <Text style={[styles.submitText, { color: canSubmit ? "white" : "#9AA0A6" }]}>
+                {editing ? "保存する" : "追加する"}
+              </Text>
             </Pressable>
           </ScrollView>
         </Animated.View>
@@ -229,6 +305,33 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center",
   },
+  catalog: { marginBottom: 4 },
+  catalogSearch: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: "#F1F3F4",
+  },
+  catalogInput: { flex: 1, fontSize: 14, color: "#202124", padding: 0 },
+  catalogEmpty: { fontSize: 12, color: "#80868B", marginTop: 10 },
+  catalogRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: "#F1F3F4",
+  },
+  catalogName: { fontSize: 14, fontWeight: "700", color: "#202124" },
+  catalogMeta: { fontSize: 11, color: "#5F6368", marginTop: 1 },
+  catalogConflict: { fontSize: 11, color: "#EA4335", marginTop: 2 },
+  catalogAdd: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: "#1A73E8",
+  },
+  catalogAddDisabled: { backgroundColor: "#F1F3F4" },
+  catalogAddText: { fontSize: 13, fontWeight: "700", color: "white" },
+  catalogAddDoneText: { fontSize: 12, fontWeight: "700", color: "#34A853" },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 18 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#E8EAED" },
+  dividerText: { fontSize: 11, color: "#9AA0A6" },
   label: { fontSize: 12, fontWeight: "700", color: "#80868B", marginBottom: 6 },
   input: {
     fontSize: 15,

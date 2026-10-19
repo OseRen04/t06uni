@@ -22,6 +22,7 @@ const INITIAL_COURSES: Course[] = [
 type CoursesContextValue = {
   courses: Course[];
   addCourse: (data: NewCourse) => void;
+  updateCourse: (id: string, data: NewCourse) => void;
   deleteCourse: (id: string) => void;
 };
 
@@ -36,10 +37,13 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
     setCourses(p => [...p, { ...data, id: `c${Date.now()}`, color }]);
   };
 
+  const updateCourse = (id: string, data: NewCourse) =>
+    setCourses(p => p.map(c => (c.id === id ? { ...c, ...data } : c)));
+
   const deleteCourse = (id: string) => setCourses(p => p.filter(c => c.id !== id));
 
   return (
-    <CoursesContext.Provider value={{ courses, addCourse, deleteCourse }}>
+    <CoursesContext.Provider value={{ courses, addCourse, updateCourse, deleteCourse }}>
       {children}
     </CoursesContext.Provider>
   );

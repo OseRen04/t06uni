@@ -1,90 +1,33 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Ellipse, G, Line, Path, Polygon, Rect, Text as SvgText } from "react-native-svg";
 import { ArrowLeft, Clock, Footprints, MapPin, Navigation } from "lucide-react-native";
 import type { Course } from "@/types";
-
-const DAY_NAMES = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"];
-const PERIOD_TIMES = ["8:50–10:20", "10:30–12:00", "13:00–14:30", "14:40–16:10", "16:20–17:50"];
+import {
+  CAMPUS_BUILDINGS, GATE, findBuilding, findRoute, routeToPath, walkMinutes, type Point,
+} from "@/data/campus";
+import { findFloorPlan, findRoom } from "@/data/floorPlans";
+import { useCampusLocation, type LocationStatus } from "@/hooks/useCampusLocation";
+import type { Destination } from "@/lib/destination";
+import { formatSlotWithTime } from "@/lib/schedule";
 
 const CARD_HEIGHT = 214;
 
-// Campus SVG coordinate system: viewBox 0 0 390 560
-// 現在地 (GPS): (195, 510) — near 正門 at bottom center
-type BuildingDef = {
-  id: string;
-  x: number; y: number; w: number; h: number;
-  labelX: number; labelY: number;
-  pinX: number; pinY: number; // pin tip = top-center of building
-  route: string;              // SVG path from 現在地 to building (M/L の折れ線のみ)
-  walkMin: number;
+// GPS の現在地が使えないとき、正門を起点にしている理由
+const FALLBACK_REASON: Record<Exclude<LocationStatus, "ok">, string> = {
+  loading: "現在地を取得中…",
+  denied: "位置情報が許可されていないため正門から案内",
+  outside: "キャンパスの外にいるため正門から案内",
+  unconfigured: "キャンパスの位置が未設定のため正門から案内",
+  error: "現在地を取得できないため正門から案内",
 };
-
-const BUILDINGS: BuildingDef[] = [
-  {
-    id: "学部棟", x: 120, y: 150, w: 52, h: 128,
-    labelX: 146, labelY: 214, pinX: 146, pinY: 134,
-    route: "M 195 510 L 195 310 L 117 310 L 117 214 L 120 214",
-    walkMin: 3,
-  },
-  {
-    id: "図書館", x: 20, y: 150, w: 82, h: 58,
-    labelX: 61, labelY: 179, pinX: 61, pinY: 134,
-    route: "M 195 510 L 195 139 L 61 139 L 61 150",
-    walkMin: 4,
-  },
-  {
-    id: "研究棟A", x: 290, y: 150, w: 78, h: 52,
-    labelX: 329, labelY: 176, pinX: 329, pinY: 134,
-    route: "M 195 510 L 195 139 L 329 139 L 329 150",
-    walkMin: 5,
-  },
-  {
-    id: "研究棟B", x: 290, y: 218, w: 78, h: 64,
-    labelX: 329, labelY: 250, pinX: 329, pinY: 202,
-    route: "M 195 510 L 195 310 L 265 310 L 265 250 L 290 250",
-    walkMin: 5,
-  },
-  {
-    id: "体育館", x: 18, y: 325, w: 76, h: 80,
-    labelX: 56, labelY: 365, pinX: 56, pinY: 309,
-    route: "M 195 510 L 195 310 L 117 310 L 117 365 L 94 365",
-    walkMin: 3,
-  },
-  {
-    id: "食堂", x: 215, y: 325, w: 70, h: 54,
-    labelX: 250, labelY: 352, pinX: 250, pinY: 309,
-    route: "M 195 510 L 195 310 L 250 310 L 250 325",
-    walkMin: 2,
-  },
-  {
-    id: "学生会館", x: 215, y: 395, w: 70, h: 54,
-    labelX: 250, labelY: 422, pinX: 250, pinY: 379,
-    route: "M 195 510 L 195 465 L 250 465 L 250 449",
-    walkMin: 2,
-  },
-  {
-    id: "講義棟", x: 120, y: 295, w: 52, h: 54,
-    labelX: 146, labelY: 322, pinX: 146, pinY: 279,
-    route: "M 195 510 L 195 322 L 172 322",
-    walkMin: 2,
-  },
-];
 
 const TREES = [
   [44,44],[76,60],[312,36],[342,56],[362,42],
   [28,238],[52,272],[258,408],[288,432],[312,412],
   [68,438],[86,458],[170,530],[220,530],
 ];
-
-// 折れ線の全長。stroke-dashoffset で経路を「描いていく」アニメーションに使う
-function polylineLength(d: string) {
-  const n = (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
-  let len = 0;
-  for (let i = 2; i + 1 < n.length; i += 2) len += Math.hypot(n[i] - n[i - 2], n[i + 1] - n[i - 1]);
-  return len;
-}
 
 // Animated.Value の現在値を state として受け取る。
 // react-native-svg の要素は Animated.createAnimatedComponent だと Web で警告が出るため、値を state に流して再描画する
@@ -97,8 +40,7 @@ function useAnimatedNumber(anim: Animated.Value, initial: number) {
   return value;
 }
 
-function Route({ d }: { d: string }) {
-  const len = polylineLength(d);
+function RouteLine({ d, length }: { d: string; length: number }) {
   const progress = useRef(new Animated.Value(0)).current;
   const t = useAnimatedNumber(progress, 0);
 
@@ -111,7 +53,7 @@ function Route({ d }: { d: string }) {
 
   const common = {
     d, fill: "none", strokeLinecap: "round", strokeLinejoin: "round",
-    strokeDasharray: [len, len], strokeDashoffset: len * (1 - t),
+    strokeDasharray: [length, length], strokeDashoffset: length * (1 - t),
   } as const;
 
   return (
@@ -146,9 +88,10 @@ function Pin({ x, y }: { x: number; y: number }) {
   );
 }
 
-function CurrentLocation() {
+function CurrentLocation({ at, heading, label }: { at: Point; heading: number | null; label: string }) {
   const anim = useRef(new Animated.Value(18)).current;
   const r = useAnimatedNumber(anim, 18);
+  const { x, y } = at;
 
   useEffect(() => {
     const ease = Easing.inOut(Easing.ease);
@@ -164,10 +107,18 @@ function CurrentLocation() {
 
   return (
     <G>
-      <Circle cx={195} cy={510} r={r} fill="#4285F4" opacity={0.14} />
-      <Circle cx={195} cy={510} r={12} fill="#4285F4" opacity={0.22} />
-      <Circle cx={195} cy={510} r={8} fill="#4285F4" stroke="white" strokeWidth={2.5} />
-      <SvgText x={195} y={530} textAnchor="middle" fontSize={9} fill="#4285F4" fontWeight="700">現在地</SvgText>
+      <Circle cx={x} cy={y} r={r} fill="#4285F4" opacity={0.14} />
+      {/* 向いている方角(地図は北が上なので、北 = 0° からそのまま回転させる) */}
+      {heading !== null && (
+        <Path
+          d={`M ${x} ${y} L ${x - 13} ${y - 34} A 36 36 0 0 1 ${x + 13} ${y - 34} Z`}
+          fill="#4285F4" opacity={0.3}
+          transform={`rotate(${heading} ${x} ${y})`}
+        />
+      )}
+      <Circle cx={x} cy={y} r={12} fill="#4285F4" opacity={0.22} />
+      <Circle cx={x} cy={y} r={8} fill="#4285F4" stroke="white" strokeWidth={2.5} />
+      <SvgText x={x} y={y + 20} textAnchor="middle" fontSize={9} fill="#4285F4" fontWeight="700">{label}</SvgText>
     </G>
   );
 }
@@ -193,16 +144,38 @@ function Compass() {
   );
 }
 
+/** キャンパス自由検索から開いたときのカードの見出し(例: 「104 11講義室」「104号室」「学部棟」) */
+function placeTitle(d: Destination) {
+  if (!d.roomNumber) return d.building;
+  const plan = d.floor !== undefined ? findFloorPlan(d.building, d.floor) : undefined;
+  const room = plan && findRoom(plan, d.roomNumber, d.roomId);
+  if (room?.name) return `${room.number} ${room.name}`;
+  return /^[\dA-Z]+$/i.test(d.roomNumber) ? `${d.roomNumber}号室` : d.roomNumber;
+}
+
 type Props = {
-  course: Course;
+  destination: Destination;
+  course?: Course;
   onBack: () => void;
   onEnterBuilding: () => void;
 };
 
-export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
+export function CampusMap({ destination, course, onBack, onEnterBuilding }: Props) {
   const insets = useSafeAreaInsets();
-  const bld = BUILDINGS.find(b => b.id === course.building);
+  const location = useCampusLocation();
+  const bld = findBuilding(destination.building);
   const cardHeight = CARD_HEIGHT + insets.bottom;
+
+  const usingGps = location.status === "ok" && location.point !== null;
+  const start = usingGps ? location.point! : GATE;
+  const route = useMemo(() => (bld ? findRoute(start, bld) : null), [bld, start.x, start.y]);
+  const walk = route ? walkMinutes(route) : null;
+  const walkText = walk === null ? "?" : String(walk);
+
+  const roomText = [
+    destination.floor !== undefined ? `${destination.floor}F` : "",
+    destination.roomNumber && (/^[\dA-Z]+$/i.test(destination.roomNumber) ? `${destination.roomNumber}号室` : destination.roomNumber),
+  ].filter(Boolean).join("　");
 
   return (
     <View style={styles.root}>
@@ -228,7 +201,7 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
             </G>
           ))}
 
-          {/* Roads — white */}
+          {/* Roads — white(経路探索の道路データ ROADS と同じ位置) */}
           {/* Main vertical */}
           <Rect x={182} y={0}   width={26}  height={560} fill="white" opacity={0.95} />
           {/* Upper horizontal */}
@@ -248,8 +221,8 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
           <Line x1={0}   y1={310} x2={390} y2={310} stroke="#FDD835" strokeWidth={1.2} strokeDasharray="10 8" opacity={0.45} />
 
           {/* Buildings */}
-          {BUILDINGS.map(b => {
-            const isTarget = b.id === course.building;
+          {CAMPUS_BUILDINGS.map(b => {
+            const isTarget = b.id === destination.building;
             const bgColor =
               isTarget         ? "#E8F0FE" :
               b.id === "食堂"  ? "#FFF8E1" :
@@ -284,14 +257,14 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
           <Rect x={174} y={498} width={42} height={22} rx={4} fill="#37474F" />
           <SvgText x={195} y={513} textAnchor="middle" fontSize={10} fill="white" fontWeight="700">正　門</SvgText>
 
-          {/* Route — only to selected building */}
-          {bld && <Route d={bld.route} />}
+          {/* Route — 現在地(使えないときは正門)から目的の建物の入口まで */}
+          {route && <RouteLine key={bld!.id} d={routeToPath(route)} length={route.length} />}
 
           {/* Destination pin */}
           {bld && <Pin x={bld.pinX} y={bld.pinY} />}
 
-          {/* GPS current location — 正門付近 */}
-          <CurrentLocation />
+          {/* 現在地 */}
+          <CurrentLocation at={start} heading={location.heading} label={usingGps ? "現在地" : "正門(仮の現在地)"} />
 
           {/* Compass */}
           <Compass />
@@ -300,14 +273,19 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
 
       {/* Top search bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
-        <Pressable onPress={onBack} style={styles.backButton} accessibilityLabel="時間割に戻る">
+        <Pressable onPress={onBack} style={styles.backButton} accessibilityLabel="戻る">
           <ArrowLeft size={20} color="#202124" />
         </Pressable>
         <View style={styles.destination}>
           <MapPin size={14} color="#EA4335" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.destinationName}>{course.building}</Text>
-            <Text style={styles.destinationMeta}>現在地から徒歩約{bld?.walkMin ?? "?"}分</Text>
+            <Text style={styles.destinationName}>{destination.building}</Text>
+            <Text style={styles.destinationMeta}>
+              {usingGps ? "現在地" : "正門"}から徒歩約{walkText}分
+            </Text>
+            {!usingGps && location.status !== "ok" && (
+              <Text style={styles.fallbackNote}>{FALLBACK_REASON[location.status]}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -319,25 +297,25 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
         </View>
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* Course name + tags */}
-          <Text style={styles.courseName} numberOfLines={1}>{course.name}</Text>
+          {/* Course name / place name + tags */}
+          <Text style={styles.courseName} numberOfLines={1}>{course ? course.name : placeTitle(destination)}</Text>
           <View style={styles.tagRow}>
-            <Text style={styles.buildingTag}>{course.building}</Text>
-            <Text style={styles.room}>{course.floor}F　{course.roomNumber}号室</Text>
+            <Text style={styles.buildingTag}>{destination.building}</Text>
+            {roomText !== "" && <Text style={styles.room}>{roomText}</Text>}
           </View>
 
           {/* Info row */}
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Footprints size={13} color="#1A73E8" />
-              <Text style={styles.walk}>徒歩{bld?.walkMin ?? "?"}分</Text>
+              <Text style={styles.walk}>徒歩{walkText}分</Text>
             </View>
-            <View style={styles.infoItem}>
-              <Clock size={13} color="#80868B" />
-              <Text style={styles.time}>
-                {DAY_NAMES[course.day]}　{course.period}限　{PERIOD_TIMES[course.period - 1]}
-              </Text>
-            </View>
+            {course && (
+              <View style={styles.infoItem}>
+                <Clock size={13} color="#80868B" />
+                <Text style={styles.time}>{formatSlotWithTime(course.day, course.period)}</Text>
+              </View>
+            )}
           </View>
 
           {/* Enter building button */}
@@ -346,7 +324,7 @@ export function CampusMap({ course, onBack, onEnterBuilding }: Props) {
             style={({ pressed }) => [styles.enterButton, pressed && { transform: [{ scale: 0.97 }] }]}
           >
             <Navigation size={17} color="white" />
-            <Text style={styles.enterButtonText}>建物に入る → フロア案内</Text>
+            <Text style={styles.enterButtonText}>建物に入る → フロアマップ</Text>
           </Pressable>
         </View>
       </View>
@@ -368,12 +346,13 @@ const styles = StyleSheet.create({
   },
   destination: {
     flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "white", borderRadius: 999,
+    backgroundColor: "white", borderRadius: 24,
     paddingHorizontal: 16, paddingVertical: 10,
     boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
   },
   destinationName: { fontSize: 14, fontWeight: "600", color: "#202124" },
   destinationMeta: { fontSize: 11, color: "#80868B" },
+  fallbackNote: { fontSize: 10, color: "#E37400", marginTop: 1 },
   card: {
     position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20,
     backgroundColor: "white",
