@@ -21,7 +21,7 @@ MVP 最終決定の項目と、それを実装している場所。
 
 | MVP 項目 | 内容 | 実装 |
 | --- | --- | --- |
-| 時間割の作成と編集 | 講義は「授業を検索/登録する」画面から登録する(時間割画面の「授業を検索/登録する」ボタンか、空きコマをタップ)。編集モードで講義をタップすると編集画面に移り内容を変更でき、×で削除できる。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/app/components/Timetable.tsx)、[CourseEditScreen.tsx](src/app/components/CourseEditScreen.tsx) |
+| 時間割の作成と編集 | 講義は「授業を検索/登録する」画面から登録する(時間割画面の「授業を検索/登録する」ボタンか、空きコマをタップ)。時間割画面の「削除」ボタンで削除モードにし、講義の右上の×で削除する(確認ダイアログあり)。削除モード中に講義をタップすると編集画面に移り内容を変更できる。同じ曜日・時限への重複登録はできない | [Timetable.tsx](src/app/components/Timetable.tsx)、[CourseEditScreen.tsx](src/app/components/CourseEditScreen.tsx) |
 | 授業登録検索(授業名、曜日、何コマ、教授の名前) | 別画面の「授業を検索/登録する」で、授業名・曜日・何コマ・教員名の4つの条件を指定して「検索」を押すと(授業名・教員名の入力中は Enter でも可)結果が出て、結果の「登録」ボタンで時間割に入れる。検索を押すまで結果は出さない。条件は組み合わせられ、空きコマから開いたときはその曜日・時限が最初から選ばれている(結果は検索を押してから出る)。結果は曜日・時限ごとにまとめ、最初は空いているコマの授業だけを表示する(「空きコマのみ」を外すと登録済みのコマも出る)。一致した文字は黄色で強調する。モック環境のため、該当が3件未満のときは検索条件どおりの模擬の授業を自動で作って結果に出す | [CourseSearchScreen.tsx](src/app/components/CourseSearchScreen.tsx)、[catalog.ts](src/app/data/catalog.ts)、[mockCourses.ts](src/app/data/mockCourses.ts) |
 | 時間割表に講義名, 講義室, 棟, 階層を表示 | 各セルに講義名・棟・階・教室番号を表示する | [Timetable.tsx](src/app/components/Timetable.tsx) |
 | キャンパス自由検索(教室名, 棟の名前) | 時間割画面の「教室・棟を探す」ボタンから別画面を開き、教室名・棟の名前を入れて「検索」を押すか、「棟から探す」の棟を選ぶ。結果は棟ごとにまとめ、時間割で使っている教室には授業名を添える。結果をタップするとキャンパスマップを開き、戻ると検索結果に戻る。モック環境のため、該当がないときは入力した名前の模擬の教室を出す | [CampusSearchScreen.tsx](src/app/components/CampusSearchScreen.tsx)、[places.ts](src/app/data/places.ts) |

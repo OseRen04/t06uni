@@ -41,7 +41,7 @@ export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse,
               color: editMode ? "white" : "#3C4043",
             }}
           >
-            {editMode ? "編集を終える" : "編集"}
+            {editMode ? "削除を終える" : "削除"}
           </button>
         </div>
 
@@ -68,7 +68,7 @@ export function Timetable({ courses, editMode, onToggleEditMode, onSelectCourse,
         {/* 編集モード中であることと、できる操作を文字で伝える(色だけに頼らない) */}
         {editMode && (
           <p className="mt-2 px-3 py-2 rounded-lg" style={{ fontSize: 13, color: "#A50E0E", backgroundColor: "#FCE8E6" }} role="status">
-            編集モード:講義をタップすると内容を変更、右上の×で削除できます
+            削除モード:講義の右上の×で削除できます(講義をタップすると内容を変更できます)
           </p>
         )}
       </div>
