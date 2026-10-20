@@ -81,6 +81,7 @@ MVP 最終決定の項目と、それを実装している場所。
 | [docs/システム構成.md](docs/システム構成.md) | 画面構成、入力・処理・出力、案内に使う情報の一覧 |
 | [docs/利用フロー.md](docs/利用フロー.md) | 利用者が時間割から講義室入口に着くまでの操作フロー |
 | [docs/スライド.md](docs/スライド.md) | 発表用スライドのMarkdownソース(Marp形式) |
+| [docs/仕様更新_フィードバック反映.md](docs/仕様更新_フィードバック反映.md) | 2026-10-20 のフィードバック(付箋5枚・意見7件)をもとにした仕様の更新案と未確定事項 |
 | [docs/pdf/](docs/pdf/) | 上記ドキュメントをまとめたPDF(例: 利用フローとシステム構成.pdf) |
 | [guidelines/Guidelines.md](guidelines/Guidelines.md) | UI実装のガイドライン |
 | [ATTRIBUTIONS.md](ATTRIBUTIONS.md) | 使用素材のクレジット |
