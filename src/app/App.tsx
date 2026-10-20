@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { AnimatePresence } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { CheckCircle2 } from "lucide-react";
 import type { Course, Destination, NewCourse } from "./types";
 import { Timetable } from "./components/Timetable";
 import { CampusMap } from "./components/CampusMap";
@@ -7,7 +8,9 @@ import { FloorMap } from "./components/FloorMap";
 import { CourseSearchScreen } from "./components/CourseSearchScreen";
 import { CourseEditScreen } from "./components/CourseEditScreen";
 import { CampusSearchScreen } from "./components/CampusSearchScreen";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import type { Place } from "./data/places";
+import { formatSlot } from "./lib/schedule";
 
 export type { Course };
 
@@ -31,6 +34,16 @@ const INITIAL_COURSES: Course[] = [
 
 type Screen = "timetable" | "search" | "edit" | "campusSearch" | "campus" | "floor";
 
+// 2.4.2 ページタイトル:画面ごとにタブ・読み上げのタイトルを変える
+const SCREEN_TITLES: Record<Screen, string> = {
+  timetable: "時間割",
+  search: "授業を検索/登録する",
+  edit: "講義を編集",
+  campusSearch: "教室・棟を探す",
+  campus: "キャンパスマップ",
+  floor: "フロアマップ",
+};
+
 // 開いている行き先。courseId で講義を引き直す(編集が反映されるように)。from はキャンパスマップから戻る先
 type Target = { destination: Destination; courseId?: string; from: Screen };
 
@@ -44,6 +57,21 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   // キャンパス自由検索で最後に検索した語(地図から戻ったときに結果を出し直す)
   const [campusQuery, setCampusQuery] = useState("");
+  // 削除の確認ダイアログで確認中の講義
+  const [pendingDelete, setPendingDelete] = useState<Course | null>(null);
+  // 4.1.3 ステータスメッセージ:登録・保存・削除の結果を画面に出し、読み上げもする
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null);
+  const noticeTimer = useRef<number>();
+
+  const announce = (text: string) => {
+    setNotice({ id: Date.now(), text });
+    window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 5000);
+  };
+
+  useEffect(() => {
+    document.title = `${SCREEN_TITLES[screen]} | キャンパス授業ナビ`;
+  }, [screen]);
 
   const addCourse = (data: NewCourse) => {
     const color = COLORS[courses.length % COLORS.length];
@@ -53,7 +81,10 @@ export default function App() {
   const updateCourse = (id: string, data: NewCourse) =>
     setCourses(p => p.map(c => (c.id === id ? { ...c, ...data } : c)));
 
-  const deleteCourse = (id: string) => setCourses(p => p.filter(c => c.id !== id));
+  const deleteCourse = (c: Course) => {
+    setCourses(p => p.filter(x => x.id !== c.id));
+    announce(`「${c.name}」(${formatSlot(c.day, c.period)})を時間割から削除しました`);
+  };
 
   const openCourse = (c: Course) => {
     setTarget({ destination: { building: c.building, floor: c.floor, roomNumber: c.roomNumber }, courseId: c.id, from: "timetable" });
@@ -81,18 +112,17 @@ export default function App() {
   const editing = editingId ? courses.find(c => c.id === editingId) : undefined;
 
   return (
+    <MotionConfig reducedMotion="user">
     <div
       className="flex items-center justify-center min-h-screen bg-gray-400"
       style={{ fontFamily: "'Hiragino Sans', 'Noto Sans JP', sans-serif" }}
     >
-      <div
-        className="relative bg-white overflow-hidden"
-        style={{ width: 390, height: 844, borderRadius: 44, boxShadow: "0 30px 80px rgba(0,0,0,0.35)" }}
-      >
-        {/* Status bar */}
+      <div className="phone-frame relative bg-white overflow-hidden">
+        {/* Status bar(端末の見た目を再現した飾りなので、支援技術からは隠す) */}
         <div
-          className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-8"
+          className="device-chrome absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-8"
           style={{ height: 44, pointerEvents: "none" }}
+          aria-hidden="true"
         >
           <span style={{ fontSize: 15, fontWeight: 600 }}>9:41</span>
           <div className="flex items-center gap-1.5">
@@ -128,7 +158,7 @@ export default function App() {
                 onOpenSearch={openSearch}
                 onOpenCampusSearch={() => { setCampusQuery(""); setScreen("campusSearch"); }}
                 onEditCourse={openEdit}
-                onDeleteCourse={deleteCourse}
+                onDeleteCourse={setPendingDelete}
               />
             )}
             {screen === "search" && (
@@ -137,7 +167,11 @@ export default function App() {
                 existingCourses={courses}
                 initialDay={searchSlot.day}
                 initialPeriod={searchSlot.period}
-                onRegister={data => { addCourse(data); backToTimetable(); }}
+                onRegister={data => {
+                  addCourse(data);
+                  backToTimetable();
+                  announce(`「${data.name}」を${formatSlot(data.day, data.period)}に登録しました`);
+                }}
                 onBack={backToTimetable}
               />
             )}
@@ -146,7 +180,11 @@ export default function App() {
                 key="edit"
                 existingCourses={courses}
                 editing={editing}
-                onSubmit={data => { updateCourse(editing.id, data); backToTimetable(); }}
+                onSubmit={data => {
+                  updateCourse(editing.id, data);
+                  backToTimetable();
+                  announce(`「${data.name}」の変更を保存しました`);
+                }}
                 onBack={backToTimetable}
               />
             )}
@@ -180,14 +218,46 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        {/* Home indicator */}
+        {/* 登録・保存・削除の結果(画面下に5秒出し、role="status" で読み上げる) */}
+        <div className="absolute left-4 right-4 bottom-8 z-40 flex justify-center pointer-events-none" role="status" aria-live="polite">
+          <AnimatePresence>
+            {notice && (
+              <motion.p
+                key={notice.id}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl"
+                style={{ backgroundColor: "#202124", color: "white", fontSize: 14, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              >
+                <CheckCircle2 size={18} color="#81C995" aria-hidden="true" />
+                {notice.text}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 講義を削除する前の確認 */}
+        <AnimatePresence>
+          {pendingDelete && (
+            <ConfirmDialog
+              title="講義を削除しますか?"
+              description={`「${pendingDelete.name}」(${formatSlot(pendingDelete.day, pendingDelete.period)})を時間割から削除します。この操作は取り消せません。`}
+              confirmLabel="削除する"
+              onConfirm={() => { deleteCourse(pendingDelete); setPendingDelete(null); }}
+              onCancel={() => setPendingDelete(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Home indicator(飾り) */}
         <div
-          className="absolute bottom-2 left-0 right-0 flex justify-center"
+          className="device-chrome absolute bottom-2 left-0 right-0 flex justify-center"
           style={{ pointerEvents: "none", zIndex: 50 }}
+          aria-hidden="true"
         >
           <div className="bg-black rounded-full" style={{ width: 134, height: 5, opacity: 0.2 }} />
         </div>
       </div>
     </div>
+    </MotionConfig>
   );
 }

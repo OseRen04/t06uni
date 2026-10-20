@@ -1,0 +1,41 @@
+/* WCAG 2.2 対応の全体スタイル */
+
+/* 2.4.7 フォーカスの可視化:キーボード操作中の位置を、どの部品でもはっきり示す */
+:focus-visible {
+  outline: 3px solid #1967D2 !important;
+  outline-offset: 2px !important;
+}
+
+/* 入力欄は枠(.field)ごと囲むので、中の input 自体には線を出さない */
+.field:focus-within {
+  outline: 3px solid #1967D2;
+  outline-offset: 2px;
+}
+.field input:focus-visible {
+  outline: none !important;
+}
+
+/* 1.4.3 コントラスト:プレースホルダーの文字も 4.5:1 以上にする */
+::placeholder {
+  color: #6B6F75;
+  opacity: 1;
+}
+
+/* 1.4.10 リフロー:端末の枠は画面幅に収め、横スクロールを出さない */
+.phone-frame {
+  width: min(390px, 100vw);
+  height: min(844px, 100dvh);
+  border-radius: 44px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+/* スマホで開いたときは枠と、飾りの時刻・ホームバーを出さない(本物と二重になるため) */
+@media (max-width: 430px) {
+  .phone-frame {
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .device-chrome {
+    display: none;
+  }
+}

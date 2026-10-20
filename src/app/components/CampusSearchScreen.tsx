@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, Building2, CalendarDays, ChevronRight, MapPin, Search, X } from "lucide-react";
+import { Building2, CalendarDays, ChevronRight, MapPin, Search } from "lucide-react";
 import type { Course } from "../types";
 import { CAMPUS_BUILDINGS } from "../data/campus";
 import { searchPlaces, type Place } from "../data/places";
 import { formatSlot } from "../lib/schedule";
 import { tokenize } from "../lib/search";
 import { Highlight } from "./Highlight";
+import { Chip, ChipGroup, ScreenHeader, TextField } from "./common";
 
 type Props = {
   courses: Course[];
@@ -50,139 +51,102 @@ export function CampusSearchScreen({ courses, initialQuery, onSearch, onSelectPl
       initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
       transition={{ type: "spring", damping: 28, stiffness: 260 }}
     >
-      {/* Header */}
-      <div className="bg-white pt-12 pb-2 px-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
-            aria-label="時間割に戻る"
-          >
-            <ArrowLeft size={18} color="#5F6368" />
-          </button>
-          <p style={{ fontSize: 16, fontWeight: 700, color: "#202124" }}>教室・棟を探す</p>
-        </div>
-      </div>
+      <ScreenHeader title="教室・棟を探す" onBack={onBack} backLabel="時間割に戻る" divider={false} />
 
       {/* 検索欄・結果をまとめてスクロールさせる(上に固定するのは画面タイトルだけ) */}
       <div className="flex-1 overflow-y-auto">
         {/* 検索欄 */}
-        <div className="px-5 pt-2 pb-4 space-y-3" style={{ borderBottom: "1px solid #E8EAED" }}>
-          <div className="flex gap-2">
-            <div className="flex-1 min-w-0 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: "#F1F3F4" }}>
-              <MapPin size={15} color="#80868B" />
-              <input
-                type="text" value={query} onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) search(); }}
-                enterKeyHint="search"
-                placeholder="例:104、学部棟" aria-label="教室名・棟の名前"
-                className="flex-1 min-w-0 bg-transparent outline-none"
-                style={{ fontSize: 14, color: "#202124" }}
-              />
-              {query && (
-                <button onClick={() => setQuery("")} aria-label="入力を消す">
-                  <X size={14} color="#80868B" />
-                </button>
-              )}
-            </div>
+        <div className="px-5 pt-1 pb-4 space-y-4" style={{ borderBottom: "1px solid #DADCE0" }}>
+          <form role="search" aria-label="教室・棟の検索" className="flex items-end gap-2" onSubmit={e => { e.preventDefault(); search(); }}>
+            <TextField label="教室名・棟の名前" value={query} onChange={setQuery} placeholder="例:104、学部棟" icon={<MapPin size={16} color="#5F6368" />} />
             <button
-              onClick={() => search()}
+              type="submit"
               className="flex items-center gap-1 px-4 rounded-xl flex-shrink-0"
-              style={{ backgroundColor: "#1A73E8" }}
+              style={{ minHeight: 46, backgroundColor: "#1967D2" }}
             >
-              <Search size={15} color="white" />
-              <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>検索</span>
+              <Search size={16} color="white" aria-hidden="true" />
+              <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>検索</span>
             </button>
-          </div>
+          </form>
 
           {/* 文字を打たずに棟から探せるようにする */}
-          <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#80868B", marginBottom: 6 }}>棟から探す</p>
-            <div className="flex flex-wrap gap-1.5">
-              {CAMPUS_BUILDINGS.map(b => {
-                const selected = submitted.trim() === b.id;
-                return (
-                  <button
-                    key={b.id}
-                    onClick={() => search(b.id)}
-                    className="px-3 py-1.5 rounded-full"
-                    style={{
-                      fontSize: 13, fontWeight: 600,
-                      backgroundColor: selected ? "#1A73E8" : "#F1F3F4",
-                      color: selected ? "white" : "#5F6368",
-                    }}
-                  >
-                    {b.id}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <ChipGroup label="棟から探す">
+            {CAMPUS_BUILDINGS.map(b => (
+              <Chip key={b.id} label={b.id} selected={submitted.trim() === b.id} onClick={() => search(b.id)} />
+            ))}
+          </ChipGroup>
         </div>
 
         {/* 検索結果 */}
         <div className="pb-8">
-          {tokens.length === 0 ? (
+          {/* 件数(検索のたびに読み上げる) */}
+          <div role="status" aria-live="polite">
+            {tokens.length > 0 && (
+              <p className="px-5 py-2" style={{ fontSize: 13, fontWeight: 700, color: "#3C4043", backgroundColor: "#F8F9FA", borderBottom: "1px solid #DADCE0" }}>
+                「{submitted.trim()}」の検索結果 {results.length}件
+              </p>
+            )}
+          </div>
+
+          {tokens.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-12 px-8 text-center">
-              <MapPin size={28} color="#DADCE0" />
-              <p style={{ fontSize: 13, color: "#80868B", lineHeight: 1.6 }}>
+              <MapPin size={28} color="#80868B" aria-hidden="true" />
+              <p style={{ fontSize: 14, color: "#3C4043", lineHeight: 1.6 }}>
                 教室名や棟の名前を入れて「検索」を押すか、<br />上の棟を選んでください
               </p>
             </div>
-          ) : (
-            <>
-              <p className="px-5 py-2" style={{ fontSize: 12, fontWeight: 700, color: "#5F6368", backgroundColor: "#F8F9FA", borderBottom: "1px solid #E8EAED" }}>
-                {results.length}件
-              </p>
+          )}
 
-              {groups.map(g => (
-                <section key={g.building}>
-                  {/* 棟の見出し。タップでその棟の地図を開く */}
-                  <button
-                    onClick={() => onSelectPlace(g.buildingHit ?? { key: `b-${g.building}`, title: g.building, building: g.building })}
-                    className="w-full flex items-center gap-2 px-5 py-2.5 text-left"
-                    style={{ backgroundColor: "#E8F0FE" }}
-                    aria-label={`${g.building}を地図で見る`}
-                  >
-                    <Building2 size={16} color="#1A73E8" />
-                    <span className="flex-1" style={{ fontSize: 14, fontWeight: 700, color: "#1A73E8" }}>
-                      <Highlight text={g.building} tokens={tokens} />
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#1A73E8" }}>棟を地図で見る</span>
-                    <ChevronRight size={16} color="#1A73E8" />
-                  </button>
+          {tokens.length > 0 && groups.map(g => (
+            <section key={g.building} aria-label={g.building}>
+              {/* 棟の見出し。タップでその棟の地図を開く */}
+              <h2>
+                <button
+                  onClick={() => onSelectPlace(g.buildingHit ?? { key: `b-${g.building}`, title: g.building, building: g.building })}
+                  className="w-full flex items-center gap-2 px-5 py-3 text-left"
+                  style={{ backgroundColor: "#E8F0FE" }}
+                >
+                  <Building2 size={18} color="#185ABC" aria-hidden="true" />
+                  <span className="flex-1" style={{ fontSize: 15, fontWeight: 700, color: "#185ABC" }}>
+                    <Highlight text={g.building} tokens={tokens} />
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#185ABC" }}>棟を地図で見る</span>
+                  <ChevronRight size={18} color="#185ABC" aria-hidden="true" />
+                </button>
+              </h2>
 
-                  {g.rooms.map(p => {
-                    const using = coursesIn(p);
-                    return (
+              <ul>
+                {g.rooms.map(p => {
+                  const using = coursesIn(p);
+                  return (
+                    <li key={p.key}>
                       <button
-                        key={p.key}
                         onClick={() => onSelectPlace(p)}
                         className="w-full flex items-center gap-3 px-5 py-3 text-left active:bg-gray-50"
-                        aria-label={`${p.building} ${p.floor}F ${p.title}を地図で見る`}
-                        style={{ borderBottom: "1px solid #F1F3F4" }}
+                        style={{ borderBottom: "1px solid #E8EAED" }}
                       >
-                        <MapPin size={16} color="#EA4335" className="flex-shrink-0" />
+                        <MapPin size={18} color="#C5221F" className="flex-shrink-0" aria-hidden="true" />
                         <div className="flex-1 min-w-0">
-                          <p style={{ fontSize: 15, fontWeight: 700, color: "#202124" }}>
+                          <p style={{ fontSize: 16, fontWeight: 700, color: "#202124" }}>
                             <Highlight text={p.title} tokens={tokens} />
-                            <span style={{ fontSize: 12, fontWeight: 400, color: "#80868B" }}>　{p.floor}F</span>
+                            <span style={{ fontSize: 13, fontWeight: 400, color: "#5F6368" }}>　{p.floor}F</span>
+                            <span className="sr-only">({p.building})。地図で見る</span>
                           </p>
                           {using.map(c => (
-                            <p key={c.id} className="flex items-center gap-1 truncate" style={{ fontSize: 11, color: "#188038" }}>
-                              <CalendarDays size={11} color="#188038" className="flex-shrink-0" />
+                            <p key={c.id} className="flex items-center gap-1" style={{ fontSize: 12, color: "#137333" }}>
+                              <CalendarDays size={13} color="#137333" className="flex-shrink-0" aria-hidden="true" />
                               時間割:{c.name}({formatSlot(c.day, c.period)})
                             </p>
                           ))}
                         </div>
-                        <ChevronRight size={16} color="#9AA0A6" className="flex-shrink-0" />
+                        <ChevronRight size={18} color="#5F6368" className="flex-shrink-0" aria-hidden="true" />
                       </button>
-                    );
-                  })}
-                </section>
-              ))}
-            </>
-          )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
         </div>
       </div>
     </motion.div>

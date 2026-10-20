@@ -6,6 +6,7 @@ import {
   CAMPUS_BUILDINGS, GATE, findBuilding, findRoute, routeToPath, walkMinutes, type Point,
 } from "../data/campus";
 import { useCampusLocation, type LocationStatus } from "../hooks/useCampusLocation";
+import { useFocusOnMount } from "../hooks/useFocusOnMount";
 import { formatRoom, formatSlotWithTime } from "../lib/schedule";
 
 // GPS の現在地が使えないとき、正門を起点にしている理由
@@ -34,7 +35,7 @@ function Pin({ x, y }: { x: number; y: number }) {
       <ellipse cx={x} cy={y + 20} rx="7" ry="3.5" fill="rgba(0,0,0,0.18)" />
       <path
         d={`M ${x} ${y + 18} C ${x - 9} ${y + 9} ${x - 11} ${y} ${x - 11} ${y - 3} A 11 11 0 1 1 ${x + 11} ${y - 3} C ${x + 11} ${y} ${x + 9} ${y + 9} ${x} ${y + 18} Z`}
-        fill="#EA4335"
+        fill="#C5221F"
       />
       <circle cx={x} cy={y - 3} r="4.5" fill="white" />
     </motion.g>
@@ -48,7 +49,8 @@ function CurrentLocation({ at, heading, label }: { at: Point; heading: number | 
       <motion.circle
         cx={x} cy={y} r="22" fill="#4285F4" opacity="0.14"
         animate={{ r: [18, 28, 18] }}
-        transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
+        // 2.2.2 一時停止・停止・非表示:5 秒を超えて動き続けないよう、1 回だけ脈打たせる
+        transition={{ duration: 2.6, ease: "easeInOut" }}
       />
       {/* 向いている方角(地図は北が上なので、北 = 0° からそのまま回転させる) */}
       {heading !== null && (
@@ -60,7 +62,7 @@ function CurrentLocation({ at, heading, label }: { at: Point; heading: number | 
       )}
       <circle cx={x} cy={y} r="12" fill="#4285F4" opacity="0.22" />
       <circle cx={x} cy={y} r="8" fill="#4285F4" stroke="white" strokeWidth="2.5" />
-      <text x={x} y={y + 20} textAnchor="middle" fontSize="9" fill="#4285F4" fontWeight="700">{label}</text>
+      <text x={x} y={y + 20} textAnchor="middle" fontSize="9" fill="#185ABC" fontWeight="700">{label}</text>
     </g>
   );
 }
@@ -70,17 +72,17 @@ function Compass() {
     <g>
       <circle cx="355" cy="85" r="24" fill="white" opacity="0.96" stroke="#DADCE0" strokeWidth="1.2" />
       {/* N — red */}
-      <polygon points="355,65 358.5,77 355,74 351.5,77" fill="#EA4335" />
+      <polygon points="355,65 358.5,77 355,74 351.5,77" fill="#C5221F" />
       {/* S */}
-      <polygon points="355,105 358.5,93 355,96 351.5,93" fill="#9AA0A6" />
+      <polygon points="355,105 358.5,93 355,96 351.5,93" fill="#6B6F75" />
       {/* E */}
-      <polygon points="375,85 363,88.5 366,85 363,81.5" fill="#9AA0A6" />
+      <polygon points="375,85 363,88.5 366,85 363,81.5" fill="#6B6F75" />
       {/* W */}
-      <polygon points="335,85 347,88.5 344,85 347,81.5" fill="#9AA0A6" />
-      <text x="355" y="72" textAnchor="middle" fontSize="8" fontWeight="800" fill="#EA4335">N</text>
-      <text x="355" y="102" textAnchor="middle" fontSize="7" fill="#9AA0A6">S</text>
-      <text x="371" y="88" textAnchor="middle" fontSize="7" fill="#9AA0A6">E</text>
-      <text x="339" y="88" textAnchor="middle" fontSize="7" fill="#9AA0A6">W</text>
+      <polygon points="335,85 347,88.5 344,85 347,81.5" fill="#6B6F75" />
+      <text x="355" y="72" textAnchor="middle" fontSize="8" fontWeight="800" fill="#C5221F">N</text>
+      <text x="355" y="102" textAnchor="middle" fontSize="7" fill="#6B6F75">S</text>
+      <text x="371" y="88" textAnchor="middle" fontSize="7" fill="#6B6F75">E</text>
+      <text x="339" y="88" textAnchor="middle" fontSize="7" fill="#6B6F75">W</text>
       <circle cx="355" cy="85" r="3.5" fill="#5F6368" />
     </g>
   );
@@ -94,6 +96,7 @@ type Props = {
 };
 
 export function CampusMap({ destination, course, onBack, onEnterBuilding }: Props) {
+  const headingRef = useFocusOnMount<HTMLHeadingElement>();
   const location = useCampusLocation();
   const bld = findBuilding(destination.building);
 
@@ -116,9 +119,19 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
       initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
       transition={{ type: "spring", damping: 28, stiffness: 260 }}
     >
+      {/* 画面の見出し(地図の画面なので見た目には出さず、読み上げとフォーカス移動に使う) */}
+      <h1 ref={headingRef} tabIndex={-1} data-focus-fallback className="sr-only">
+        {destination.building}までのキャンパスマップ
+      </h1>
+
       {/* Full-screen map SVG */}
       <div className="absolute inset-0" style={{ bottom: 214 }}>
-        <svg viewBox="0 0 390 560" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
+        {/* 1.1.1 非テキストコンテンツ:地図が伝えている内容を文字でも伝える */}
+        <svg
+          viewBox="0 0 390 560" className="w-full h-full" preserveAspectRatio="xMidYMid slice"
+          role="img" focusable="false"
+          aria-label={`キャンパスマップ。${usingGps ? "現在地" : "正門"}から${destination.building}の入口までの道順を青い線で示しています。徒歩約${walkText}分。北は上です。`}
+        >
 
           {/* Base ground */}
           <rect width="390" height="560" fill="#E8EAED" />
@@ -166,7 +179,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
               b.id === "体育館"? "#F3E5F5" :
               "#ECEFF1";
             const strokeColor =
-              isTarget         ? "#1A73E8" :
+              isTarget         ? "#1967D2" :
               b.id === "食堂"  ? "#FFE082" :
               "#B0BEC5";
 
@@ -174,7 +187,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
               <g key={b.id}>
                 {isTarget && (
                   <rect x={b.x - 3} y={b.y - 3} width={b.w + 6} height={b.h + 6} rx="7"
-                    fill="#1A73E8" opacity="0.12" />
+                    fill="#1967D2" opacity="0.12" />
                 )}
                 <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="5"
                   fill={bgColor} stroke={strokeColor} strokeWidth={isTarget ? 2.5 : 1.5} />
@@ -182,7 +195,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
                   x={b.labelX} y={b.labelY}
                   textAnchor="middle" fontSize={isTarget ? 12 : 11}
                   fontWeight={isTarget ? "700" : "500"}
-                  fill={isTarget ? "#1A73E8" : b.id === "食堂" ? "#F9A825" : "#546E7A"}
+                  fill={isTarget ? "#1967D2" : b.id === "食堂" ? "#8D5B00" : "#546E7A"}
                 >
                   {b.id}
                 </text>
@@ -208,7 +221,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
               <motion.path
                 key={`b-${bld!.id}`}
                 d={routeToPath(route)} fill="none"
-                stroke="#1A73E8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
+                stroke="#1967D2" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
                 initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
                 transition={{ duration: 1.2, ease: "easeOut", delay: 0.25 }}
               />
@@ -233,22 +246,22 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0"
             style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}
-            aria-label="戻る"
+            aria-label="前の画面に戻る"
           >
-            <ArrowLeft size={20} color="#202124" />
+            <ArrowLeft size={20} color="#202124" aria-hidden="true" />
           </button>
           <div
             className="flex-1 bg-white rounded-3xl px-4 py-2.5 flex items-center gap-2"
             style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}
           >
-            <MapPin size={14} color="#EA4335" />
+            <MapPin size={16} color="#C5221F" aria-hidden="true" />
             <div className="flex-1">
               <p style={{ fontSize: 14, fontWeight: 600, color: "#202124" }}>{destination.building}</p>
-              <p style={{ fontSize: 11, color: "#80868B" }}>
+              <p style={{ fontSize: 12, color: "#5F6368" }}>
                 {usingGps ? "現在地" : "正門"}から徒歩約{walkText}分
               </p>
               {location.status !== "ok" && (
-                <p style={{ fontSize: 10, color: "#E37400" }}>{FALLBACK_REASON[location.status]}</p>
+                <p style={{ fontSize: 12, color: "#B06000" }}>{FALLBACK_REASON[location.status]}</p>
               )}
             </div>
           </div>
@@ -260,9 +273,9 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
             <button
               onClick={location.requestHeading}
               className="flex items-center gap-1.5 bg-white rounded-full px-3 py-2"
-              style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25)", fontSize: 12, fontWeight: 600, color: "#1A73E8" }}
+              style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25)", fontSize: 12, fontWeight: 600, color: "#1967D2" }}
             >
-              <CompassIcon size={14} color="#1A73E8" />
+              <CompassIcon size={16} color="#1967D2" aria-hidden="true" />
               向いている方角を表示
             </button>
           </div>
@@ -272,7 +285,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
       {/* Bottom card */}
       <div
         className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl z-20"
-        style={{ height: 214, boxShadow: "0 -2px 20px rgba(0,0,0,0.15)" }}
+        style={{ minHeight: 214, boxShadow: "0 -2px 20px rgba(0,0,0,0.15)" }}
       >
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
@@ -285,7 +298,7 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
           </p>
           <div className="flex items-center gap-2 mt-1.5">
             <span className="px-2 py-0.5 rounded-md"
-              style={{ fontSize: 11, fontWeight: 600, backgroundColor: "#E8F0FE", color: "#1A73E8" }}>
+              style={{ fontSize: 12, fontWeight: 700, backgroundColor: "#E8F0FE", color: "#185ABC" }}>
               {destination.building}
             </span>
             {roomText && <span style={{ fontSize: 13, color: "#5F6368" }}>{roomText}</span>}
@@ -294,12 +307,12 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
           {/* Info row */}
           <div className="flex items-center gap-4 mt-2.5 pt-2.5" style={{ borderTop: "1px solid #E8EAED" }}>
             <div className="flex items-center gap-1.5">
-              <Footprints size={13} color="#1A73E8" />
-              <span style={{ fontSize: 12, color: "#1A73E8", fontWeight: 600 }}>徒歩{walkText}分</span>
+              <Footprints size={14} color="#1967D2" aria-hidden="true" />
+              <span style={{ fontSize: 12, color: "#1967D2", fontWeight: 600 }}>徒歩{walkText}分</span>
             </div>
             {course && (
               <div className="flex items-center gap-1.5">
-                <Clock size={13} color="#80868B" />
+                <Clock size={14} color="#5F6368" aria-hidden="true" />
                 <span style={{ fontSize: 12, color: "#5F6368" }}>{formatSlotWithTime(course.day, course.period)}</span>
               </div>
             )}
@@ -310,10 +323,12 @@ export function CampusMap({ destination, course, onBack, onEnterBuilding }: Prop
             whileTap={{ scale: 0.97 }}
             onClick={onEnterBuilding}
             className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 mt-3"
-            style={{ backgroundColor: "#1A73E8" }}
+            style={{ backgroundColor: "#1967D2" }}
           >
-            <Navigation size={17} color="white" />
-            <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>建物に入る → フロアマップ</span>
+            <Navigation size={17} color="white" aria-hidden="true" />
+            <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>
+              建物に入る <span aria-hidden="true">→</span> フロアマップ
+            </span>
           </motion.button>
         </div>
       </div>
